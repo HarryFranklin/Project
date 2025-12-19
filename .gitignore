@@ -3,13 +3,13 @@
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore
 #
 .utmp/
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Ll]ogs/
-/[Uu]ser[Ss]ettings/
+/Project_A/[Ll]ibrary/
+/Project_A/[Tt]emp/
+/Project_A/[Oo]bj/
+/Project_A/[Bb]uild/
+/Project_A/[Bb]uilds/
+/Project_A/[Ll]ogs/
+/Project_A/[Uu]ser[Ss]ettings/
 *.log
 
 # MemoryCaptures can get excessive in size.
