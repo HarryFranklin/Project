@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI; // Required for GridLayoutGroup
-using TMPro; // Required for TextMeshPro
+using UnityEngine.UI;
+using TMPro;
 
 public class SimulationManager : MonoBehaviour {
     [Header("Data Files")]
@@ -10,7 +10,7 @@ public class SimulationManager : MonoBehaviour {
 
     [Header("Simulation Settings")]
     public GameObject personPrefab; 
-    public Transform container; // Assign your "RespondentGrid" Panel here
+    public Transform container;
 
     [Header("UI References")]
     public TextMeshProUGUI infoText;
@@ -21,8 +21,7 @@ public class SimulationManager : MonoBehaviour {
     void Start() {
         LoadData();
         
-        // We use Invoke to wait a split second for the UI Layout system 
-        // to calculate the screen size before we do our maths.
+        // Wait a tiny bit to let the UI system calculate the scree nsize before doing our maths.
         Invoke(nameof(VisualiseRespondents), 0.1f);
     }
 
