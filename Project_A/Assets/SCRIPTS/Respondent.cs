@@ -13,7 +13,7 @@ public class Respondent
     public float[] personalUtilities;
     public float[] societalUtilities;
 
-    public Respondent(int id)
+    public Respondent(int id) 
     {
         this.id = id;
         personalUtilities = new float[6];

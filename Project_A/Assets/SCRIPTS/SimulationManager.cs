@@ -1,169 +1,145 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UI; // REQUIRED for GridLayoutGroup
 using TMPro;
 
 public class SimulationManager : MonoBehaviour {
-    [Header("Data Files")]
-    public TextAsset personalFile;
-    public TextAsset societalFile;
+    
+    [Header("Dependencies")]
+    public DataReader dataReader; 
 
-    [Header("Simulation Settings")]
+    [Header("Visual Setup")]
     public GameObject personPrefab; 
-    public Transform container;
-
-    [Header("UI References")]
+    public Transform container; 
     public TextMeshProUGUI infoText;
 
-    private Dictionary<int, Respondent> _respondents = new Dictionary<int, Respondent>();
+    [Header("Layout Configuration")]
+    public int margin = 25;      // Margin around the edges (pixels)
+    public float spacing = 5f;   // Spacing between dots (pixels)
+
+    private Dictionary<int, Respondent> _respondents;
     private bool _isShowingStats = false; 
 
-    void Start() {
-        LoadData();
+    void Start() 
+    {
+        if (dataReader == null) {
+            Debug.LogError("No DataReader assigned!");
+            return;
+        }
+
+        _respondents = dataReader.GetRespondents();
         
-        // Wait a tiny bit to let the UI system calculate the scree nsize before doing our maths.
+        // Wait 0.1s for Unity's UI system to initialise the RectTransform dimensions
         Invoke(nameof(VisualiseRespondents), 0.1f);
     }
 
-    void LoadData() {
-        _respondents.Clear();
-
-        // 1. Parse Personal Utilities
-        if (personalFile != null) {
-            string[] lines = personalFile.text.Split('\n');
-            for (int i = 1; i < lines.Length; i++) {
-                if (string.IsNullOrWhiteSpace(lines[i])) continue;
-                string[] cols = lines[i].Split(',');
-
-                // Format: ID, Death, U2, U4, U6, U8, U10
-                if (int.TryParse(cols[0], out int id)) {
-                    Respondent r = new Respondent(id);
-                    r.personalUtilities[0] = float.Parse(cols[1]); // Death
-                    r.personalUtilities[1] = float.Parse(cols[2]); // U2
-                    r.personalUtilities[2] = float.Parse(cols[3]); // U4
-                    r.personalUtilities[3] = float.Parse(cols[4]); // U6
-                    r.personalUtilities[4] = float.Parse(cols[5]); // U8
-                    r.personalUtilities[5] = float.Parse(cols[6]); // U10
-                    _respondents[id] = r;
-                }
-            }
-        }
-
-        // 2. Parse Societal Utilities
-        if (societalFile != null) {
-            string[] lines = societalFile.text.Split('\n');
-            for (int i = 1; i < lines.Length; i++) {
-                if (string.IsNullOrWhiteSpace(lines[i])) continue;
-                string[] cols = lines[i].Split(',');
-
-                if (int.TryParse(cols[0], out int id)) {
-                    if (_respondents.ContainsKey(id)) {
-                        Respondent r = _respondents[id];
-                        r.societalUtilities[0] = float.Parse(cols[1]);
-                        r.societalUtilities[1] = float.Parse(cols[2]);
-                        r.societalUtilities[2] = float.Parse(cols[3]);
-                        r.societalUtilities[3] = float.Parse(cols[4]);
-                        r.societalUtilities[4] = float.Parse(cols[5]);
-                        r.societalUtilities[5] = float.Parse(cols[6]);
-                    }
-                }
-            }
-        }
-
-        Debug.Log($"Loaded {_respondents.Count} respondents.");
-    }
-
     void VisualiseRespondents() {
-        // 1. Clean up old objects
+        // 1. Clear old objects
         foreach (Transform child in container) Destroy(child.gameObject);
+
+        if (_respondents.Count == 0) return;
 
         // 2. Get UI Components
         GridLayoutGroup grid = container.GetComponent<GridLayoutGroup>();
         RectTransform rect = container.GetComponent<RectTransform>();
 
-        if (grid != null && rect != null && _respondents.Count > 0) {
-            
-            float width = rect.rect.width;
-            float height = rect.rect.height;
-            
-            // Calculate total area available
-            float totalArea = width * height;
-            
-            // Calculate area per person
-            float areaPerPerson = totalArea / _respondents.Count;
-            
-            // Calculate side length (Square Root of Area)
-            // Subtract spacing so they don't touch
-            float spacing = grid.spacing.x;
-            float sideLength = Mathf.Sqrt(areaPerPerson) - spacing;
-
-            // Apply the new size to the grid cells
-            // We clamp it to a minimum of 5px so they don't vanish if the screen is tiny
-            sideLength = Mathf.Max(sideLength, 5f);
-            grid.cellSize = new Vector2(sideLength, sideLength);
-            // -------------------------
+        if (grid == null || rect == null) 
+        {
+            Debug.LogError("Container needs a RectTransform and a GridLayoutGroup!");
+            return;
         }
 
-        // 3. Spawn the dots
-        foreach (var kvp in _respondents) {
+        // A. Define usable space
+        grid.padding = new RectOffset(margin, margin, margin, margin);
+        grid.spacing = new Vector2(spacing, spacing);
+
+        float usableWidth = rect.rect.width - (margin * 2);
+        float usableHeight = rect.rect.height - (margin * 2);
+
+        // B. Calculate best Row/Column distribution
+        // We want the grid aspect ratio to match the container aspect ratio
+        float count = _respondents.Count;
+        float containerRatio = usableWidth / usableHeight;
+
+        // Calculate ideal columns based on ratio
+        int cols = Mathf.CeilToInt(Mathf.Sqrt(count * containerRatio));
+        // Calculate resulting rows needed to hold everyone
+        int rows = Mathf.CeilToInt(count / cols);
+
+        // C. Calculate the maximum size a cell can be to fit width-wise
+        // Available Width = (Cols * Size) + ((Cols - 1) * Spacing)
+        // Therefore: Size = (Width - ((Cols - 1) * Spacing)) / Cols
+        float maxCellWidth = (usableWidth - ((cols - 1) * spacing)) / cols;
+
+        // D. Calculate the maximum size a cell can be to fit height-wise
+        float maxCellHeight = (usableHeight - ((rows - 1) * spacing)) / rows;
+
+        // E. Pick the smaller dimension (so it fits in both width and height)
+        float finalSize = Mathf.Min(maxCellWidth, maxCellHeight);
+
+        // F. Apply Settings
+        grid.cellSize = new Vector2(finalSize, finalSize);
+        
+        // Force the Grid to use exactly this many columns
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = cols;
+
+        // -----------------------------------
+
+        // 3. Spawn the objects
+        foreach (var kvp in _respondents) 
+        {
             GameObject go = Instantiate(personPrefab, container);
             go.name = $"Respondent_{kvp.Value.id}";
             
             RespondentVisual visual = go.GetComponent<RespondentVisual>();
-            if(visual != null) visual.Initialise(kvp.Value, this);
+            if (visual != null) 
+            {
+                visual.Initialise(kvp.Value, OnPersonHover, OnPersonExit, OnPersonClick);
+            }
         }
+
+        // 4. Force UI Update
+        LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
     }
 
     // --- INTERACTION LOGIC ---
 
-    public void ShowRespondentInfo(Respondent r) {
-        // Always show individual info on hover
-        string msg = $"<b>Respondent {r.id}</b>\n";
-        msg += $"Personal U4: {r.personalUtilities[2]:F2}\n";
-        msg += $"Societal U4: {r.societalUtilities[2]:F2}";
-        infoText.text = msg;
+    private void OnPersonHover(Respondent r) 
+    {
+        infoText.text = $"<b>Respondent {r.id}</b>\nPersonal U4: {r.personalUtilities[2]:F2}\nSocietal U4: {r.societalUtilities[2]:F2}";
     }
 
-    public void ClearInfo() {
-        // When unhovering:
-        // If stats mode is ON, show stats.
-        // If stats mode is OFF, show "Hover" prompt.
-        if (_isShowingStats) {
-            DisplayGroupStats();
-        } else {
-            infoText.text = "Hover over a person to see details.";
-        }
+    private void OnPersonExit() 
+    {
+        if (_isShowingStats) DisplayGroupStats();
+        else infoText.text = "Hover over a person to see details.";
     }
 
-    public void ToggleGroupStats() {
+    private void OnPersonClick(Respondent r) 
+    {
+        Debug.Log($"Clicked {r.id}");
+    }
+
+    public void ToggleGroupStats() 
+    {
         _isShowingStats = !_isShowingStats;
-
-        if (_isShowingStats) {
-            DisplayGroupStats();
-        } else {
-            infoText.text = "Hover over a person to see details.";
-        }
+        if (_isShowingStats) DisplayGroupStats();
+        else infoText.text = "Hover over a person to see details.";
     }
 
-    private void DisplayGroupStats() {
-        if (_respondents.Count == 0) return;
-
-        float avgPersonal = 0;
-        float avgSocietal = 0;
-
+    private void DisplayGroupStats() 
+    {
+        if (_respondents == null || _respondents.Count == 0) return;
+        float avgPersonal = 0, avgSocietal = 0;
         foreach(var r in _respondents.Values) {
-            avgPersonal += r.personalUtilities[2]; // U4
-            avgSocietal += r.societalUtilities[2]; // U4
+            avgPersonal += r.personalUtilities[2]; 
+            avgSocietal += r.societalUtilities[2];
         }
-
-        avgPersonal /= _respondents.Count;
-        avgSocietal /= _respondents.Count;
-
-        string msg = $"<b>Group Analysis ({_respondents.Count})</b>\n";
-        msg += $"Avg Personal U4: {avgPersonal:F2}\n";
-        msg += $"Avg Societal U4: {avgSocietal:F2}\n\n";
-        msg += "<i>(Hover over a person to inspect them temporarily)</i>";
         
+        string msg = $"<b>Group Analysis ({_respondents.Count})</b>\n";
+        msg += $"Avg Personal U4: {(avgPersonal/_respondents.Count):F2}\n";
+        msg += $"Avg Societal U4: {(avgSocietal/_respondents.Count):F2}";
         infoText.text = msg;
     }
 }

@@ -1,44 +1,58 @@
+using System;
 using UnityEngine;
-using UnityEngine.UI; // Required for Image
-using UnityEngine.EventSystems; 
+using UnityEngine.UI; // For UI Image
+using UnityEngine.EventSystems;
 
-public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler {
-    public Respondent data;
-    private SimulationManager _manager;
-    private Image _uiImage; // Changed from SpriteRenderer
-    
+public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler 
+{    
+    private Respondent _data;
     private Vector3 _originalScale = Vector3.zero;
 
-    public void Initialise(Respondent respondentData, SimulationManager manager) {
-        data = respondentData;
-        _manager = manager;
-        _uiImage = GetComponent<Image>();
-        
-        // Random colour
-        if (_uiImage != null)
-            _uiImage.color = new Color(Random.value, Random.value, Random.value);
+    private Action<Respondent> _onHoverEnter;
+    private Action _onHoverExit;
+    private Action<Respondent> _onClick;
 
-        // Capture the scale
+    public void Initialise(Respondent data, Action<Respondent> onHover, Action onExit, Action<Respondent> onClick) 
+    {
+        _data = data;
+        _onHoverEnter = onHover;
+        _onHoverExit = onExit;
+        _onClick = onClick;
+
+        // Try to find a renderer to colour it
+        SetRandomColour();
+
+        // Capture scale for the hover effect
         _originalScale = transform.localScale;
     }
 
-    public void OnPointerEnter(PointerEventData eventData) {
-        if (_originalScale == Vector3.zero) _originalScale = transform.localScale;
-
-        transform.localScale = _originalScale * 1.2f;
+    private void SetRandomColour() {
+        Color randomCol = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
         
-        if (_manager != null) _manager.ShowRespondentInfo(data);
+        Image img = GetComponent<Image>();
+        if (img != null) 
+        {
+            img.color = randomCol;
+            return;
+        }
     }
 
-    public void OnPointerExit(PointerEventData eventData) {
+    public void OnPointerEnter(PointerEventData eventData) 
+    {
         if (_originalScale == Vector3.zero) _originalScale = transform.localScale;
-
-        transform.localScale = _originalScale;
-        
-        if (_manager != null) _manager.ClearInfo();
+        transform.localScale = _originalScale * 1.2f; // Pop effect
+        _onHoverEnter?.Invoke(_data);
     }
-    
-    private void OnDisable() {
-        if (_originalScale != Vector3.zero) transform.localScale = _originalScale;
+
+    public void OnPointerExit(PointerEventData eventData) 
+    {
+        if (_originalScale == Vector3.zero) _originalScale = transform.localScale;
+        transform.localScale = _originalScale; // Reset
+        _onHoverExit?.Invoke();
+    }
+
+    public void OnPointerClick(PointerEventData eventData) 
+    {
+        _onClick?.Invoke(_data);
     }
 }
