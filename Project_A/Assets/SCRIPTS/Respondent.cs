@@ -1,17 +1,13 @@
-using System.Collections.Generic;
-using UnityEngine;
-
 [System.Serializable]
-public class Respondent
+public class Respondent 
 {
     public int id;
-
-    // Utilities: Death(0), 2, 4, 6, 8, 10
-    //      Stored as an array of 6 ints
-    // Indexes: 0 = Death, 1 = U_2, 2 = U_4, ...
-
-    public float[] personalUtilities;
+    public float[] personalUtilities; // Indices: 0=Death, 1=E, 2=D, 3=C, 4=B, 5=A
     public float[] societalUtilities;
+    
+    // 0=Death, 1=Destitute ... 5=Thriving
+    public int currentTier = 2; // Default to middle
+    public float happinessWithPolicy = 0f; 
 
     public Respondent(int id) 
     {

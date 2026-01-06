@@ -7,8 +7,15 @@ public class SimulationManager : MonoBehaviour
 {
     public enum ColourMode 
     {
-        InequalityAversion, // Focuses on the gap between Self and Society
-        TotalUtility        // Focuses on overall Life Satisfaction
+        InequalityAversion, 
+        TotalUtility,       
+        PolicyHappiness     
+    }
+
+    public enum TierDistribution 
+    {
+        UniformRandom, 
+        RealisticUK    
     }
 
     [Header("Dependencies")]
@@ -17,34 +24,137 @@ public class SimulationManager : MonoBehaviour
     public Transform container;     
     
     [Header("UI Output")]
-    public TextMeshProUGUI infoText; // Hover details go here
-    public TextMeshProUGUI modeText; // The Legend/Mode explanation goes here
+    public TextMeshProUGUI infoText; 
+    public TextMeshProUGUI modeText; 
 
     [Header("Configuration")]
-    public ColourMode currentMode = ColourMode.InequalityAversion; // Default launch mode
+    public ColourMode currentMode = ColourMode.InequalityAversion; 
+    public TierDistribution distributionMode = TierDistribution.UniformRandom;
     public int margin = 25;
     public float spacing = 5f;
 
+    [Header("Policies")]
+    public List<Policy> availablePolicies; 
+    private int _policyIndex = 0;
+    private Policy _activePolicy; // Internal tracker
+
+    // Helper for update loop
+    private int _lastTax;
+    private int _lastGain;
+
     private Dictionary<int, Respondent> _respondents;
-    private bool _isShowingStats = false; 
+
+    private bool _isShowingStats = false;
 
     void Start() 
     {
         if (dataReader != null) _respondents = dataReader.GetRespondents();
         
-        // This will build the grid AND set the default text automatically
+        DistributeWealth();
         Invoke(nameof(VisualiseRespondents), 0.1f);
     }
 
-    // --- VISUALISATION ---
+    // --- LIVE WATCHER LOOP ---
+    void Update() 
+    {
+        // Watch for live tweaks in the Inspector
+        if (_activePolicy != null) 
+        {
+            if (_activePolicy.taxSeverity != _lastTax || _activePolicy.socialGain != _lastGain) 
+            {
+                _lastTax = _activePolicy.taxSeverity;
+                _lastGain = _activePolicy.socialGain;
+                ApplyColourMode();
+            }
+        }
+    }
+
+    // --- BUTTON 1: TOGGLE DATA VIEW ---
+    // Switches only between the two "Analysis" modes.
+    public void ToggleDataView() 
+    {
+        if (currentMode == ColourMode.InequalityAversion) 
+        {
+            currentMode = ColourMode.TotalUtility;
+        }
+        else 
+        {
+            currentMode = ColourMode.InequalityAversion;
+        }
+        ApplyColourMode();
+    }
+
+    // --- BUTTON 2: ENTER SIMULATION ---
+    // Jumps directly to the Policy Happiness mode.
+    public void EnablePolicyView() 
+    {
+        currentMode = ColourMode.PolicyHappiness;
+        ApplyColourMode();
+    }
+
+    // --- BUTTON 3: NEXT POLICY ---
+    // Cycles through the list of ScriptableObjects you dragged in.
+    public void CycleNextPolicy() 
+    {
+        if (availablePolicies == null || availablePolicies.Count == 0) return;
+
+        _policyIndex++;
+        if (_policyIndex >= availablePolicies.Count) _policyIndex = 0;
+
+        _activePolicy = availablePolicies[_policyIndex];
+        
+        // If we aren't in policy mode, switch to it so the user sees the change
+        if (currentMode != ColourMode.PolicyHappiness) 
+        {
+            currentMode = ColourMode.PolicyHappiness;
+        }
+
+        ApplyColourMode();
+    }
+
+    // --- BUTTON 4: REROLL POPULATION ---
+    public void TogglePopulation() 
+    {
+        if (distributionMode == TierDistribution.UniformRandom) distributionMode = TierDistribution.RealisticUK;
+        else distributionMode = TierDistribution.UniformRandom;
+
+        DistributeWealth();
+        ApplyColourMode();
+    }
+
+    void DistributeWealth() 
+    {
+        if (_respondents == null) return;
+
+        foreach(var r in _respondents.Values) 
+        {
+            // --- OPTION A: RANDOM (GAME BALANCE) ---
+            if (distributionMode == TierDistribution.UniformRandom) 
+            {
+                // Gives an equal chance of being any tier from 1 (Poor) to 5 (Rich).
+                // Useful for testing to ensure you have enough data points for every reaction.
+                r.currentTier = Random.Range(1, 6); 
+            }
+            // --- OPTION B: UK DATA (REALISM) ---
+            else 
+            {
+                // This simulates the actual UK wealth spread mentioned in the paper 
+                // (Most people are okay, a minority are struggling).
+                float dice = Random.value; // Returns a number between 0.0 and 1.0
+
+                if (dice > 0.94f) r.currentTier = 1;      // Top 6% of rolls = Destitute (State E)
+                else if (dice > 0.60f) r.currentTier = 3; // Next 34% = Coping (State C)
+                else r.currentTier = 5;                   // Bottom 60% = Thriving (State A)
+            }
+        }
+    }
+    
     void VisualiseRespondents() 
     {    
-        // 1. Clear old objects
         foreach (Transform child in container) Destroy(child.gameObject);
 
         if (_respondents == null || _respondents.Count == 0) return;
 
-        // 2. Setup Grid & Rect logic
         GridLayoutGroup grid = container.GetComponent<GridLayoutGroup>();
         RectTransform rect = container.GetComponent<RectTransform>();
 
@@ -72,7 +182,6 @@ public class SimulationManager : MonoBehaviour
         grid.constraintCount = cols;
         grid.childAlignment = TextAnchor.MiddleCenter;
 
-        // 3. Spawn Objects
         foreach (var kvp in _respondents) 
         {
             GameObject go = Instantiate(personPrefab, container);
@@ -86,16 +195,6 @@ public class SimulationManager : MonoBehaviour
         }
         
         LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
-
-        // 4. APPLY COLORS & TEXT IMMEDIATELY
-        ApplyColourMode();
-    }
-
-    public void ToggleColourMode() 
-    {
-        if (currentMode == ColourMode.InequalityAversion) currentMode = ColourMode.TotalUtility;
-        else currentMode = ColourMode.InequalityAversion;
-
         ApplyColourMode();
     }
 
@@ -103,16 +202,29 @@ public class SimulationManager : MonoBehaviour
     {
         if (_respondents == null || _respondents.Count == 0) return;
 
-        // A. FIND RANGE
+        // 1. Recalculate Policy Impact
+        // Because Update() calls this, dragging the slider in the inspector 
+        // will immediately re-run this math for everyone.
+        if (_activePolicy != null) 
+        {
+            foreach (var r in _respondents.Values) 
+            {
+                r.happinessWithPolicy = _activePolicy.CalculateImpact(r);
+            }
+        }
+
+        // 2. FIND RANGE
         float minVal = float.MaxValue;
         float maxVal = float.MinValue;
 
-        foreach (var r in _respondents.Values) {
+        foreach (var r in _respondents.Values) 
+        {
             float val = 0;
             if (currentMode == ColourMode.InequalityAversion) 
             {
                 val = r.societalUtilities[2] - r.personalUtilities[2];
-            } else 
+            } 
+            else if (currentMode == ColourMode.TotalUtility)
             {
                 foreach(float u in r.personalUtilities) val += u;
             }
@@ -123,8 +235,9 @@ public class SimulationManager : MonoBehaviour
 
         if (Mathf.Approximately(minVal, maxVal)) maxVal = minVal + 1f;
 
-        // B. UPDATE THE MODE TEXT
-        if (modeText != null) {
+        // 3. UPDATE THE MODE TEXT
+        if (modeText != null) 
+        {
             if (currentMode == ColourMode.InequalityAversion) 
             {
                 modeText.text = $"<b>Mode: Inequality Aversion</b>\n<size=90%>Valuation Gap: {minVal:F2} to {maxVal:F2}</size>\n\n" +
@@ -134,7 +247,7 @@ public class SimulationManager : MonoBehaviour
                                 "<color=#FF6600><b>Orange (Survivor)</b></color>: \nPrioritises <b>Personal Safety</b>. " +
                                 "More tolerant of societal inequality than personal risk.";
             } 
-            else 
+            else if (currentMode == ColourMode.TotalUtility)
             {
                 modeText.text = $"<b>Mode: Total Utility</b>\n<size=90%>Utility Sum: {minVal:F1} to {maxVal:F1}</size>\n\n" +
                                 "<i>Overall Life Satisfaction & Optimism</i>\n\n" +
@@ -143,9 +256,25 @@ public class SimulationManager : MonoBehaviour
                                 "<color=#4B0082><b>Purple (Pessimist)</b></color>: \n<b>Low Satisfaction</b>. " +
                                 "Derives value only from near-perfect outcomes.";
             }
+            else if (currentMode == ColourMode.PolicyHappiness)
+            {
+                string pName = _activePolicy != null ? _activePolicy.policyName : "None";
+                string distName = distributionMode == TierDistribution.UniformRandom ? "Uniform" : "UK Realistic";
+                
+                // Show dynamic values in the text so you can confirm they are updating
+                int tax = _activePolicy != null ? _activePolicy.taxSeverity : 0;
+                int gain = _activePolicy != null ? _activePolicy.socialGain : 0;
+
+                modeText.text = $"<b>Mode: Policy Impact</b>\n" +
+                                $"<size=90%>Policy: {pName} | \nPopulation: {distName}</size>\n" +
+                                $"<size=80%>(Tax: -{tax} | Gain: +{gain})</size>\n\n" +
+                                "<i>Who supports this policy?</i>\n\n" +
+                                "<color=green><b>Green (Supporter)</b></color>: \nNet Happiness Increase.\n" +
+                                "<color=red><b>Red (Opponent)</b></color>: \nNet Happiness Decrease.";
+            }
         }
 
-        // C. PAINT THE DOTS
+        // 4. PAINT THE DOTS
         foreach (Transform child in container) 
         {
             RespondentVisual visual = child.GetComponent<RespondentVisual>();
@@ -161,23 +290,34 @@ public class SimulationManager : MonoBehaviour
                 float t = Mathf.InverseLerp(minVal, maxVal, currentVal);
                 targetColour = Color.Lerp(new Color(1f, 0.4f, 0f), new Color(0f, 0.6f, 1f), t);
             }
-            else 
+            else if (currentMode == ColourMode.TotalUtility)
             {
                 foreach(float u in r.personalUtilities) currentVal += u;
                 float t = Mathf.InverseLerp(minVal, maxVal, currentVal);
                 targetColour = Color.Lerp(new Color(0.2f, 0f, 0.4f), Color.yellow, t);
+            }
+            else if (currentMode == ColourMode.PolicyHappiness)
+            {
+                float t = Mathf.InverseLerp(-2f, 2f, r.happinessWithPolicy);
+                targetColour = Color.Lerp(Color.red, Color.green, t);
+
+                if (Mathf.Abs(r.happinessWithPolicy) < 0.05f) targetColour = Color.grey;
             }
 
             visual.SetColour(targetColour);
         }
     }
 
-    // --- INTERACTION ---
     private void OnPersonHover(Respondent r) 
     {
         if (infoText != null) 
         {
-            infoText.text = $"<b>Respondent {r.id}</b>\nPersonal U4: {r.personalUtilities[2]:F2}\nSocietal U4: {r.societalUtilities[2]:F2}";
+            string extraInfo = "";
+            if (currentMode == ColourMode.PolicyHappiness) 
+            {
+                extraInfo = $"\nTier: {r.currentTier} | Impact: {r.happinessWithPolicy:F2}";
+            }
+            infoText.text = $"<b>Respondent {r.id}</b>\nPersonal U4: {r.personalUtilities[2]:F2}\nSocietal U4: {r.societalUtilities[2]:F2}{extraInfo}";
         }
     }
 
