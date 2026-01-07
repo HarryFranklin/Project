@@ -267,7 +267,7 @@ public class SimulationManager : MonoBehaviour
 
                 modeText.text = $"<b>Mode: Policy Impact</b>\n" +
                                 $"<size=90%>Policy: {pName} | \nPopulation: {distName}</size>\n" +
-                                $"<size=80%>(Tax: -{tax} | Gain: +{gain})</size>\n\n" +
+                                $"<size=80%>(Tax: {tax} | Gain: {gain})</size>\n\n" +
                                 "<i>Who supports this policy?</i>\n\n" +
                                 "<color=green><b>Green (Supporter)</b></color>: \nNet Happiness Increase.\n" +
                                 "<color=red><b>Red (Opponent)</b></color>: \nNet Happiness Decrease.";
