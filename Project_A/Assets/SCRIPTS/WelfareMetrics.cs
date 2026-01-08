@@ -32,7 +32,27 @@ public static class WelfareMetrics
             cumulative += ONS_Distribution[i];
             if (dice <= cumulative) return i;
         }
-        return 8; // Fallback to Mode (Tier 8)
+        return 8; // Otherwise, assume they're in the mode (tier 8)
+    }
+
+    // Calculates utility for ONE person based on their Tier + Curve
+    public static float GetSinglePersonUtility(int tier, float[] utilityCurve)
+    {
+        int maxTierONS = 10;
+        int maxCurveIndex = utilityCurve.Length - 1; // Usually 5
+
+        // Map 0-10 Tier to 0-5 Curve
+        float ratio = (float)tier / maxTierONS;
+        float mappedIndex = ratio * maxCurveIndex;
+
+        int lowerIndex = Mathf.FloorToInt(mappedIndex);
+        int upperIndex = Mathf.CeilToInt(mappedIndex);
+        float t = mappedIndex - lowerIndex;
+
+        float valLower = utilityCurve[lowerIndex];
+        float valUpper = utilityCurve[upperIndex];
+
+        return Mathf.Lerp(valLower, valUpper, t);
     }
 
     // FUNCTION: f(LSarray, UtilCurve) -> Utility
@@ -42,31 +62,10 @@ public static class WelfareMetrics
     public static float EvaluateDistribution(int[] populationTiers, float[] utilityCurve)
     {
         float totalUtility = 0;
-        int maxTierONS = 10; // (0-10)
-        int maxCurveIndex = 5; // is utilityCurve.Length - 1. (0-5)
 
-        foreach (int tier in populationTiers) // foreach person, grab their LS tier ()
+        foreach (int tier in populationTiers)
         {
-            // 1. Calc the ratio, i.e. a 5/10 on the ONS is a 2.5/5 on the curve
-            float ratio = (float)tier / maxTierONS;
-
-            // 2. Map this to the curve
-            // e.g. 0.5 * 5 = 2.5 (so we want the value halfway between 2 and 3)
-            float mappedIndex = ratio * maxCurveIndex;
-
-            // 3. Find upper and lower
-            int lowerIndex = Mathf.FloorToInt(mappedIndex); // floor, so 2
-            int upperIndex = Mathf.CeilToInt(mappedIndex); // ceil, so 3
-
-            // 4. Difference between true and lower (grab the decimal)
-            float t = mappedIndex - lowerIndex; // 0.5
-
-            // 5. Lerp between upper and lower
-            float valLower = utilityCurve[lowerIndex];
-            float valUpper = utilityCurve[upperIndex];
-
-            // Finally giving the utility value that isn't clamped to an integer
-            totalUtility += Mathf.Lerp(valLower, valUpper, t); // start at lower, and lerp t towards upper (i.e. 50%)
+            totalUtility += GetSinglePersonUtility(tier, utilityCurve);
         }
 
         return totalUtility / populationTiers.Length;

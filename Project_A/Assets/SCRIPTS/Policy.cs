@@ -26,7 +26,7 @@ public class Policy : ScriptableObject
     {
         int delta = 0;
 
-        // 1. Wealth Redistribution Logic
+        // 1. What is the wealth change?
         if (isRedistributive)
         {
             if (currentTier >= taxThreshold) // Rich enough to be taxed for it

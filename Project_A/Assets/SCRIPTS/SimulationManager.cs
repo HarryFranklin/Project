@@ -25,26 +25,26 @@ public class SimulationManager : MonoBehaviour
     public Policy activePolicy; // Visible in Inspector for debugging
 
     private Dictionary<int, Respondent> _respondents;
-    private int _policyIndex = -1;
+    private int _policyIndex = -1; // -1 to start
 
     void Start()
     {
-        _respondents = dataReader.GetRespondents();
+        _respondents = dataReader.GetRespondents(); // Get all the people's information
         
         // 1. Assign Baseline using ONS Data (Weighted Random)
-        foreach (var r in _respondents.Values)
+        foreach (var personData in _respondents.Values)
         {
-            r.currentTier = WelfareMetrics.GetWeightedRandomTier();
+            personData.currentTier = WelfareMetrics.GetWeightedRandomTier();
         }
 
         // 2. Spawn Visuals (Clear old ones first)
         foreach (Transform child in container) Destroy(child.gameObject);
         
-        foreach (var r in _respondents.Values)
+        foreach (var personData in _respondents.Values)
         {
             GameObject go = Instantiate(personPrefab, container);
-            RespondentVisual vis = go.GetComponent<RespondentVisual>();
-            vis.data = r; 
+            RespondentVisual personVis = go.GetComponent<RespondentVisual>();
+            personVis.data = personData; 
         }
 
         // 3. Initial State (No Policy)
@@ -119,86 +119,85 @@ public class SimulationManager : MonoBehaviour
         // 1. Snapshot CURRENT State (Baseline Tiers)
         int[] baselinePopulation = new int[_respondents.Count];
         int i = 0;
-        foreach (var r in _respondents.Values) baselinePopulation[i++] = r.currentTier;
+        foreach (var personData in _respondents.Values) baselinePopulation[i++] = personData.currentTier;
 
         // 2. Snapshot FUTURE State (Policy Tiers)
         int[] futurePopulation = new int[_respondents.Count];
         i = 0;
         if (activePolicy != null)
         {
-            foreach (var r in _respondents.Values) 
-                futurePopulation[i++] = activePolicy.ResolveNewTier(r.currentTier);
+            foreach (var personData in _respondents.Values) 
+                futurePopulation[i++] = activePolicy.ResolveNewTier(personData.currentTier);
         }
         else
         {
             futurePopulation = baselinePopulation; 
         }
 
-        // --- LAYOUT PASS 1: Count totals per row ---
+        // --- PRE-CALCULATION PASS: Determine Rows based on U_SELF ---
+        // Key Change: Row is now determined by PERSONAL UTILITY (Happiness), not just Wealth (Tier).
+        // We calculate this first so we know how many people are in each row for spacing.
+        
+        Dictionary<int, int> respondentRows = new Dictionary<int, int>(); // Map ID -> Row
         int[] totalPerRow = new int[11]; 
-        foreach (var r in _respondents.Values)
+
+        foreach (var personData in _respondents.Values)
         {
-            int tier = (activePolicy != null) ? activePolicy.ResolveNewTier(r.currentTier) : r.currentTier;
-            int clampedTier = Mathf.Clamp(tier, 0, 10);
-            totalPerRow[clampedTier]++;
+            // A. What Tier do they have?
+            int tier = (activePolicy != null) ? activePolicy.ResolveNewTier(personData.currentTier) : personData.currentTier;
+            
+            // B. How much do they enjoy it? (U_self)
+            float uSelf = WelfareMetrics.GetSinglePersonUtility(tier, personData.personalUtilities);
+            
+            // C. Map 0.0-1.0 Utility to 0-10 Row
+            int roundedUSelf = Mathf.RoundToInt(uSelf * 10f);
+            int row = Mathf.Clamp(roundedUSelf, 0, 10);
+            
+            respondentRows[personData.id] = row;
+            totalPerRow[row]++;
         }
 
-        // --- LAYOUT PASS 2: Position Everyone ---
-        int[] placedSoFar = new int[11]; 
+        // --- LAYOUT PASS: Position Everyone ---
+        int[] placedSoFar = new int[11]; // (0-11)
         
-        foreach (Transform child in container)
+        foreach (Transform person in container)
         {
-            RespondentVisual vis = child.GetComponent<RespondentVisual>();
-            Respondent r = vis.data;
+            RespondentVisual personVis = person.GetComponent<RespondentVisual>();
+            Respondent personData = personVis.data;
 
-            // Determine Row
-            int tier = (activePolicy != null) ? activePolicy.ResolveNewTier(r.currentTier) : r.currentTier;
-            int row = Mathf.Clamp(tier, 0, 10);
+            // Retrieve the pre-calculated Row (based on Happiness)
+            int row = respondentRows[personData.id];
 
             // Dynamic Spacing Calculation
-            // Leave 40px padding total (20 left, 20 right)
             float usableWidth = containerWidth - 40f; 
             int peopleInRow = Mathf.Max(1, totalPerRow[row]);
             
-            // Calculate gap. Max width is 41f (Face size + 1px padding). 
-            // If row is crowded, this number drops, causing overlap (deck of cards effect).
             float spacingX = usableWidth / peopleInRow;
             spacingX = Mathf.Min(spacingX, 41f); 
 
             // Calculate Positions
-            // Start from Left Edge + 20px padding
             float startX = (-containerWidth / 2f) + 20f; 
             float xPos = startX + (placedSoFar[row] * spacingX);
-            // Center row vertically in its slot
             float yPos = (-containerHeight / 2f) + (row * dynamicRowHeight) + (dynamicRowHeight / 2f);
             
-            vis.GetComponent<RectTransform>().anchoredPosition = new Vector2(xPos, yPos);
+            personVis.GetComponent<RectTransform>().anchoredPosition = new Vector2(xPos, yPos);
             placedSoFar[row]++; 
 
-            // --- FACE LOGIC ---
+            // --- FACE LOGIC (U_OTHERS) ---
             if (activePolicy == null)
             {
-                vis.SetVisuals(faceNeutral);
+                personVis.SetVisuals(faceNeutral);
             }
             else
             {
-                float wOld = WelfareMetrics.EvaluateDistribution(baselinePopulation, r.societalUtilities);
-                float wNew = WelfareMetrics.EvaluateDistribution(futurePopulation, r.societalUtilities);
+                float wOld = WelfareMetrics.EvaluateDistribution(baselinePopulation, personData.societalUtilities);
+                float wNew = WelfareMetrics.EvaluateDistribution(futurePopulation, personData.societalUtilities);
                 float delta = wNew - wOld;
 
-                // Threshold 0.02 (2% change required to care)
-                if (delta > 0.02f) 
-                {
-                    vis.SetVisuals(faceHappy); // Shows Green sprite
-                }
-                else if (delta < -0.02f) 
-                {
-                    vis.SetVisuals(faceSad);   // Shows Red sprite
-                }
-                else 
-                {
-                    vis.SetVisuals(faceNeutral); // Shows Yellow sprite
-                }
+                // Threshold for difference (0.01f was too small)
+                if (delta > 0.02f) personVis.SetVisuals(faceHappy);
+                else if (delta < -0.02f) personVis.SetVisuals(faceSad);
+                else personVis.SetVisuals(faceNeutral);
             }
         }
     }
