@@ -12,7 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
   m_Name: Cost of Living Increase
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Cost of Living Increase
-  taxSeverity: 2
-  socialGain: -2
+  policyName: Cost of Living Crisis
+  description: Not a policy, but a scenario. High inflation and crumbling infrastructure
+    reduce both personal wealth and societal quality for everyone.
+  wealthChange: -2
   isRedistributive: 0
+  taxThreshold: 0
+  benefitThreshold: 0
+  societalBaseLift: -2

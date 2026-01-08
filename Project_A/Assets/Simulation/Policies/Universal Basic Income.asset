@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Universal Basic Income
   m_EditorClassIdentifier: Assembly-CSharp::Policy
   policyName: Universal Basic Income
-  taxSeverity: 2
-  socialGain: 3
+  description: Eliminates poverty by providing a guaranteed income to the bottom
+    14%, funded by significant tax increases on the wealthy (Top 27%).
+  wealthChange: 2
   isRedistributive: 1
+  taxThreshold: 9
+  benefitThreshold: 5
+  societalBaseLift: 1

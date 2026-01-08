@@ -1,66 +1,53 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewPolicy", menuName = "Simulation/Policy", order = 1)]
-public class Policy : ScriptableObject 
+[CreateAssetMenu(fileName = "NewPolicy", menuName = "Simulation/Policy")]
+public class Policy : ScriptableObject
 {
-    public string policyName = "New Policy";
+    public string policyName;
+
+    public string description;
     
-    [Header("Impact Settings")]
-    [Tooltip("Positive = Cost to individual. Negative = Benefit to individual.")]
-    [Range(-5, 5)] public int taxSeverity = 0;   
-
-    [Tooltip("Positive = Society improves. Negative = Society worsens.")]
-    [Range(-5, 5)] public int socialGain = 0;    
-
-    [Header("Advanced Logic")]
-    [Tooltip("If TRUE, the 'Tax Severity' is applied based on wealth.\nRich people pay the tax.\nPoor people RECEIVE the tax value as a benefit.")]
+    [Header("Wealth Transform")]
+    [Tooltip("Amount of steps to move UP or DOWN.")]
+    public int wealthChange = 0;
+    
+    [Header("Redistribution Logic")]
     public bool isRedistributive = false;
+    // Standard redistributive thresholds (e.g. Tax rich, help poor)
+    public int taxThreshold = 0; 
+    public int benefitThreshold = 0;
 
-    public float CalculateImpact(Respondent r) 
+    [Header("Societal Lift")]
+    [Tooltip("Global improvement (e.g. better NHS) applied to everyone.")]
+    public int societalBaseLift = 0;
+
+    // The Function: f(LS) -> LS
+    public int ResolveNewTier(int currentTier)
     {
-        // 1. DETERMINE PERSONAL IMPACT
-        int calculatedTax = taxSeverity;
+        int delta = 0;
 
+        // 1. Wealth Redistribution Logic
         if (isRedistributive)
         {
-            // REDISTRIBUTIVE LOGIC (UBI)
-            // Tier 0, 1, 2 (Poor/Mid): They GAIN wealth (Tax becomes negative)
-            // Tier 3, 4, 5 (Rich): They LOSE wealth (Tax stays positive)
-            
-            if (r.currentTier < 3) 
+            if (currentTier >= taxThreshold) // Rich enough to be taxed for it
             {
-                // I am poor, so the 'Tax' is actually a payment TO me.
-                // We invert the tax severity.
-                calculatedTax = -Mathf.Abs(taxSeverity); 
+                delta -= Mathf.Abs(wealthChange);
             }
-            else 
+            else if (currentTier <= benefitThreshold)  // Poor enough to benefit from it
             {
-                // I am rich, so I pay the full tax.
-                calculatedTax = Mathf.Abs(taxSeverity);
+                delta += Mathf.Abs(wealthChange);
             }
         }
+        else
+        {
+            // Flat impact (e.g. Austerity hits everyone)
+            delta += wealthChange;
+        }
 
-        // 2. APPLY TO PERSONAL LADDER
-        int currentPersonalTier = r.currentTier;
-        // Subtracting a negative tax means adding wealth
-        int newPersonalTier = Mathf.Clamp(currentPersonalTier - calculatedTax, 0, 5);
-        
-        float personalUtilityOld = r.personalUtilities[currentPersonalTier];
-        float personalUtilityNew = r.personalUtilities[newPersonalTier];
-        
-        float personalChange = personalUtilityNew - personalUtilityOld; 
+        // 2. Societal Lift
+        delta += societalBaseLift;
 
-        // 3. APPLY TO SOCIETAL LADDER
-        // UBI usually has a high social gain (poverty reduction)
-        int currentSocietalTier = 2; 
-        int newSocietalTier = Mathf.Clamp(currentSocietalTier + socialGain, 0, 5);
-
-        float societalUtilityOld = r.societalUtilities[currentSocietalTier];
-        float societalUtilityNew = r.societalUtilities[newSocietalTier];
-
-        float societalChange = societalUtilityNew - societalUtilityOld; 
-
-        // 4. THE TRADE-OFF
-        return personalChange + societalChange;
+        // 3. Return valid 0-10 tier
+        return Mathf.Clamp(currentTier + delta, 0, 10);
     }
 }

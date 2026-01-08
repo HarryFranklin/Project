@@ -1,36 +1,17 @@
-using System;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
-public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler 
+public class RespondentVisual : MonoBehaviour
 {
-    public Respondent data;
-    private Image _image;
-    private Color _originalColor; 
+    public Respondent data; // Reference to the data
+    public Image faceImage; // Drag the UI Image here in Inspector
 
-    private Action<Respondent> _onHoverEnter;
-    private Action _onHoverExit;
-    private Action<Respondent> _onClick;
-
-    public void Initialise(Respondent respondentData, Action<Respondent> onHover, Action onExit, Action<Respondent> onClick) 
+    // Called by Manager to update appearance
+    public void SetVisuals(Sprite sprite)
     {
-        data = respondentData;
-        _onHoverEnter = onHover;
-        _onHoverExit = onExit;
-        _onClick = onClick;
-
-        _image = GetComponent<Image>();
-    }
-
-    public void SetColour(Color c) 
-    {
-        if (_image != null) {
-            _image.color = c;
-            _originalColor = c;
+        if (faceImage != null)
+        {
+            faceImage.sprite = sprite;
         }
     }
-
-    public void OnPointerEnter(PointerEventData eventData) => _onHoverEnter?.Invoke(data);
-    public void OnPointerExit(PointerEventData eventData) => _onHoverExit?.Invoke();
 }

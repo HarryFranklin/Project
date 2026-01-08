@@ -13,5 +13,10 @@ MonoBehaviour:
   m_Name: Stimulus Checks
   m_EditorClassIdentifier: Assembly-CSharp::Policy
   policyName: Stimulus Checks
-  taxSeverity: -2
-  socialGain: 0
+  description: Distributes a one-off cash payment to every citizen. Increases personal
+    wealth slightly, but causes minor economic instability.
+  wealthChange: 1
+  isRedistributive: 0
+  taxThreshold: 0
+  benefitThreshold: 0
+  societalBaseLift: -1

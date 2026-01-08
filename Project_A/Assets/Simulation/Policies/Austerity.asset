@@ -13,5 +13,10 @@ MonoBehaviour:
   m_Name: Austerity
   m_EditorClassIdentifier: Assembly-CSharp::Policy
   policyName: Austerity
-  taxSeverity: -1
-  socialGain: -3
+  description: Lowers taxes slightly for everyone, but pays for it by slashing funding
+    for essential public services.
+  wealthChange: 1
+  isRedistributive: 0
+  taxThreshold: 0
+  benefitThreshold: 0
+  societalBaseLift: -3

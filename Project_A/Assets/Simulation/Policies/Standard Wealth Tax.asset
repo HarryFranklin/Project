@@ -10,8 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Wealth Tax
+  m_Name: Standard Wealth Tax
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Wealth Tax
-  taxSeverity: 1
-  socialGain: 3
+  policyName: Standard Wealth Tax
+  description: A targeted levy on the super-rich (Top 10%) that funds moderate improvements
+    to public services without affecting the middle class.
+  wealthChange: 1
+  isRedistributive: 1
+  taxThreshold: 10
+  benefitThreshold: -1
+  societalBaseLift: 2
