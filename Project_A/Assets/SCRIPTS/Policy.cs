@@ -25,6 +25,7 @@ public class Policy : ScriptableObject
 
 
     // FUNCTION: f(LSarray) -> LSarray
+    // Take the current LS data and change it based on this policy's parameters
     public int[] ApplyPolicy(Respondent[] population)
     {
         int[] newLS = new int[population.Length];

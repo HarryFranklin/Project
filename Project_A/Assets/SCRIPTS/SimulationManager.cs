@@ -9,8 +9,8 @@ public class SimulationManager : MonoBehaviour
     public List<Policy> policies; 
 
     [Header("Panels (Drag GameObjects here)")]
-    public GameObject policyInfoPanel; // The panel with Description/Stats
-    public GameObject comparisonPanel; // The new panel with the comparison data
+    public GameObject policyInfoPanel;
+    public GameObject comparisonPanel;
 
     [Header("Policy Info Tab References")]
     public TMP_Text policyTitleText;
@@ -18,10 +18,7 @@ public class SimulationManager : MonoBehaviour
     public TMP_Text policyStatsText;
 
     [Header("Comparison Tab References")]
-    // 1. "Policy Comparison" (Static Title) - You can just set this in Editor
-    // 2. "Default vs. POLICYNAME"
     public TMP_Text comparisonSubtitleText; 
-    // 3. The Information
     public TMP_Text comparisonBodyText; 
 
     [Header("Visual Configuration")]
@@ -32,90 +29,101 @@ public class SimulationManager : MonoBehaviour
     private Dictionary<int, Respondent> respondents;
     private List<RespondentVisual> respondentList = new List<RespondentVisual>();
     private List<Respondent> _cachedPopulationList;
-    private int policyIndex = -1; 
+    private int policyIndex = -1; // Default state
 
     // Cache current results
     private int[] _currentPopulationLS;
     private int[] _baselineLS;
 
+
     void Start()
     {
+        // Get the CSV data
         respondents = dataReader.GetRespondents();
-        float[] onsDist = WelfareMetrics.GetBaselineDistribution();
+        // Get the normalised and [0] and [1] swapped ONS data
+        float[] ONSDistribution = WelfareMetrics.GetBaselineDistribution();
 
-        // 1. Assign Data
+        // 1. Assign data
         foreach (var r in respondents.Values)
         {
-            r.currentLS = WelfareMetrics.GetWeightedRandomLS(onsDist);
+            r.currentLS = WelfareMetrics.GetWeightedRandomLS(ONSDistribution);
         }
 
-        // 2. Cache Order
+        // 2. Cache order
         _cachedPopulationList = new List<Respondent>(respondents.Values);
 
-        // 3. Spawn Visuals
-        foreach (var r in _cachedPopulationList)
+        // 3. Spawn visuals
+        foreach (var singleRespondent in _cachedPopulationList)
         {
             GameObject respondent = Instantiate(personPrefab, container);
             RespondentVisual respondentVisual = respondent.GetComponent<RespondentVisual>();
-            respondentVisual.Initialise(r, this);
+            respondentVisual.Initialise(singleRespondent, this);
             respondentList.Add(respondentVisual);
         }
 
-        // 4. Default View
+        // 4. Default view
         ShowPolicyInfoTab(); // Start on the main info tab
         UpdateSimulation();
     }
 
     // --- BUTTON FUNCTIONS ---
-    // Link these to your two new buttons
     public void ShowPolicyInfoTab()
     {
-        if(policyInfoPanel) policyInfoPanel.SetActive(true);
-        if(comparisonPanel) comparisonPanel.SetActive(false);
+        policyInfoPanel.SetActive(true);
+        comparisonPanel.SetActive(false);
     }
 
     public void ShowComparisonTab()
     {
-        if(policyInfoPanel) policyInfoPanel.SetActive(false);
-        if(comparisonPanel) comparisonPanel.SetActive(true);
+        policyInfoPanel.SetActive(false);
+        comparisonPanel.SetActive(true);
     }
 
     public void NextPolicy()
     {
-        if (policies.Count == 0) return;
+        if (policies.Count == 0) 
+        {
+            return;
+        }
+
         policyIndex = (policyIndex + 1) % policies.Count;
         UpdateSimulation();
     }
 
     void UpdateSimulation()
     {
+        // Re-grab cached population data
         Respondent[] population = _cachedPopulationList.ToArray();
         
+        // New arrays as to not overwrite old data
         _baselineLS = new int[population.Length];
         _currentPopulationLS = new int[population.Length];
 
-        for(int i=0; i<population.Length; i++) _baselineLS[i] = population[i].currentLS;
+        // For each person, apply their default LS to them
+        for (int i=0; i < population.Length; i++) 
+        {
+            _baselineLS[i] = population[i].currentLS;
+        }
 
         // Apply Policy
-        if (policyIndex == -1)
+        if (policyIndex == -1) // if first policy cycle
         {
             System.Array.Copy(_baselineLS, _currentPopulationLS, _baselineLS.Length);
             
-            // Update BOTH tabs so they are ready when clicked
+            // Update both tabs so they are ready when clicked
             UpdateUI_Default();
             UpdateScoreUI_Default();
         }
-        else
+        else // already clicked through it once
         {
+            // Don't just use the baseline information, run it through ApplyPolicy
             _currentPopulationLS = policies[policyIndex].ApplyPolicy(population);
             
-            // Update BOTH tabs
-            UpdateUI_Policy(policies[policyIndex]);
-            
-            // We calculate totals inside the loop below, then update the UI
+            // Update both tabs
+            UpdateUI_Policy(policies[policyIndex]);            
         }
 
-        // Calculate Totals & Visuals
+        // Calculate totals & visuals
         double totalBaseSocial = 0;
         double totalCurrSocial = 0;
         double totalBasePersonal = 0;
@@ -126,31 +134,39 @@ public class SimulationManager : MonoBehaviour
         {
             Respondent r = population[i];
 
-            // 1. Math
+            // Current personal utility - get their utility given their current LS
             float uSelf = WelfareMetrics.GetUtilityForPerson(_currentPopulationLS[i], r.personalUtilities);
+            // Baseline personal utility - value before any changes, given their default LS
             float uSelfBase = WelfareMetrics.GetUtilityForPerson(_baselineLS[i], r.personalUtilities);
-            float wOld = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
-            float wNew = WelfareMetrics.EvaluateDistribution(_currentPopulationLS, r.societalUtilities);
+            // Baseline societal utility - how did they judge the fairness of society in the default scenario
+            float uOthersOld = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
+            // Current societal utility - how do they judge the fairness of society in the current scenario
+            float uOthersNew = WelfareMetrics.EvaluateDistribution(_currentPopulationLS, r.societalUtilities);
 
-            // 2. Totals
-            totalBaseSocial += wOld;
-            totalCurrSocial += wNew;
+            // Add the above values to the total to calculate initial and current societal fairness index, blah
+            totalBaseSocial += uOthersOld;
+            totalCurrSocial += uOthersNew;
             totalBasePersonal += uSelfBase;
             totalCurrPersonal += uSelf;
 
-            // 3. Visuals
+            // Face logic - Do they think society is more or less fair than before?
+            // Neutral by default
             Sprite face = faceNeutral;
-            if (wNew > wOld + 0.01f) 
-            {
+            if (uOthersNew > uOthersOld + 0.01f) 
+            {  
                 face = faceHappy;
-                happyCount++;
+                happyCount++; // Increment # of happy people for the eventual % calculation for approval rating
             }
-            else if (wNew < wOld - 0.01f) face = faceSad; 
+            else if (uOthersNew < uOthersOld - 0.01f) 
+            {
+                face = faceSad; 
+            }
 
+            // For this person, update their face and pass their uSelf for the y-axis calculation
             respondentList[i].UpdateVisuals(uSelf, face);
         }
 
-        // Update Comparison Text if we are not in default mode
+        // Update comparison text if not in default mode
         if (policyIndex != -1)
         {
             UpdateScoreUI(policies[policyIndex].policyName, totalBaseSocial, totalCurrSocial, totalBasePersonal, totalCurrPersonal, happyCount, population.Length);
@@ -174,6 +190,7 @@ public class SimulationManager : MonoBehaviour
             float avgPersCurr = (float)(currPers / totalPop);
             float diffPers = avgPersCurr - avgPersBase;
 
+            // Red or green based on value
             string ColourDiff(float val)
             {
                 string s = val.ToString("F3");
@@ -220,6 +237,7 @@ public class SimulationManager : MonoBehaviour
 
         if (policyStatsText)
         {
+            // Red or green based on value
             string FormatChange(int val)
             {
                 if (val > 0) return $"<color=green>+{val}</color>";

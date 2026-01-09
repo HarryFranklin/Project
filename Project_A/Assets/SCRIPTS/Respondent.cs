@@ -11,6 +11,7 @@ public class Respondent
     public int currentLS;      // 0-10 Scale
     public int wealthTier;     // 0-10 Scale (For future policies like Wealth Tax)
 
+    // Each person has an ID and two utility arrays, u_Self and u_Others
     public Respondent(int id) 
     {
         this.id = id;
