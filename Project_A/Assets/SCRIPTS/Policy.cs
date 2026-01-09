@@ -4,50 +4,53 @@ using UnityEngine;
 public class Policy : ScriptableObject
 {
     public string policyName;
+    [TextArea] public string description;
 
-    public string description;
-    
-    [Header("Wealth Transform")]
-    [Tooltip("Amount of steps to move UP or DOWN.")]
-    public int wealthChange = 0;
-    
-    [Header("Redistribution Logic")]
-    public bool isRedistributive = false;
-    // Standard redistributive thresholds (e.g. Tax rich, help poor)
-    public int taxThreshold = 0; 
-    public int benefitThreshold = 0;
+    [Header("Thresholds")]
+    [Tooltip("Anyone with this Life Satisfaction (LS) or HIGHER is considered 'Rich'")]
+    public int richThreshold = 8; 
 
-    [Header("Societal Lift")]
-    [Tooltip("Global improvement (e.g. better NHS) applied to everyone.")]
-    public int societalBaseLift = 0;
+    [Tooltip("Anyone with this LS or LOWER is considered 'Poor'")]
+    public int poorThreshold = 4;
 
-    // The Function: f(LS) -> LS
-    public int ResolveNewTier(int currentTier)
+    [Header("Impact Values")]
+    [Tooltip("Change applied to the Rich")]
+    public int changeForRich = 0;
+
+    [Tooltip("Change applied to the Middle (everyone else)")]
+    public int changeForMiddle = 0;
+
+    [Tooltip("Change applied to the Poor")]
+    public int changeForPoor = 0;
+
+
+    // FUNCTION: f(LSarray) -> LSarray
+    public int[] ApplyPolicy(Respondent[] population)
     {
-        int delta = 0;
+        int[] newLS = new int[population.Length];
 
-        // 1. What is the wealth change?
-        if (isRedistributive)
+        for (int i = 0; i < population.Length; i++)
         {
-            if (currentTier >= taxThreshold) // Rich enough to be taxed for it
+            int current = population[i].currentLS;
+            int delta = 0;
+
+            if (current >= richThreshold)
             {
-                delta -= Mathf.Abs(wealthChange);
+                delta = changeForRich;
             }
-            else if (currentTier <= benefitThreshold)  // Poor enough to benefit from it
+            else if (current <= poorThreshold)
             {
-                delta += Mathf.Abs(wealthChange);
+                delta = changeForPoor;
             }
-        }
-        else
-        {
-            // Flat impact (e.g. Austerity hits everyone)
-            delta += wealthChange;
+            else
+            {
+                delta = changeForMiddle;
+            }
+
+            // Clamp ensures we stay within the 0-10 scale
+            newLS[i] = Mathf.Clamp(current + delta, 0, 10);
         }
 
-        // 2. Societal Lift
-        delta += societalBaseLift;
-
-        // 3. Return valid 0-10 tier
-        return Mathf.Clamp(currentTier + delta, 0, 10);
+        return newLS;
     }
 }

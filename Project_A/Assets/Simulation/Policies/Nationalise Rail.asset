@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Standard Wealth Tax
+  m_Name: Nationalise Rail
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Standard Wealth Tax
-  description: A targeted levy on the super-rich (Top 10%) that funds moderate improvements
-    to public services without affecting the middle class.
-  wealthChange: 1
-  isRedistributive: 1
-  taxThreshold: 10
-  benefitThreshold: -1
-  societalBaseLift: 2
+  policyName: Nationalise Rail
+  description: Bringing railways into public ownership. Improves commuting for workers
+    but has little impact on the very poor/rich.
+  richThreshold: 8
+  poorThreshold: 4
+  changeForRich: 0
+  changeForMiddle: 1
+  changeForPoor: 0

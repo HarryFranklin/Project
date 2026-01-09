@@ -1,9 +1,10 @@
 using UnityEngine;
+using System.Linq;
 
 public static class WelfareMetrics
 {
     // Real ONS Data (Updated UK Distribution)
-    // Converted from percentages to normalized floats (0.0 to 1.0)
+    // Converted from percentages to normalised floats (0.0 to 1.0)
     public static readonly float[] ONS_Distribution = new float[] 
     {
         // Remember it's tiny numbers - 11% is 0.11.
@@ -21,53 +22,92 @@ public static class WelfareMetrics
         0.1124f  // Tier 10: 11.24% (The Elite)
     };
 
-    // Helper to get a random tier based on real UK stats
-    public static int GetWeightedRandomTier()
+    public static float[] GetBaselineDistribution()
     {
-        float dice = Random.value; // Returns 0.0 to 1.0
+        float[] dist = (float[])ONS_Distribution.Clone();
+
+        // Check LS[0] < LS[1], if not, swap them
+        if (dist[0] > dist[1])
+        {
+            float temp = dist[0]; 
+            dist[0] = dist[1];
+            dist[1] = temp;
+        }
+
+        // Renormalise so sum is 1.0
+        float sum = dist.Sum();
+        for (int i = 0; i < dist.Length; i++) dist[i] /= sum;
+
+        return dist;
+    }
+
+    public static int GetWeightedRandomLS(float[] distribution)
+    {
+        float r = Random.value;
         float cumulative = 0f;
+        for (int i = 0; i < distribution.Length; i++)
+        {
+            cumulative += distribution[i];
+            if (r <= cumulative) return i;
+        }
+        return 8; // Fallback
+    }
+
+    // --- 2. UTILITY FUNCTIONS ---
+
+    // Ignore Death (0), and extrapolate to 0 using the gap from 4 to 2
+    // curve indices: = LS[i*2]
+    // Ignore Death (0), and extrapolate to 0 using the gap from 4 to 2
+    // curve indices: = LS[i*2]
+    public static float GetUtilityForPerson(int lsScore, float[] curve)
+    {
+        // 1. Fetch known utilities from the CSV
+        float uDeath = curve[0]; // State Death (Floor)
+        float u2  = curve[1]; // State E
+        float u4  = curve[2]; // State D
+        float u6  = curve[3]; // State C
+        float u8  = curve[4]; // State B
+        float u10 = curve[5]; // State A - perfect
+
+        // 2. Handle the gap at LS 0 and LS 1 (Extrapolation)
+        if (lsScore < 2) // is 1 or 0
+        {
+            // Calculate the slope between LS 4 and LS 2
+            float delta = (u4 - u2) / 2.0f; 
+
+            // If I am at LS 0, I am 2 steps below LS 2.
+            // U_0 = U_2 - (Slope * 2)
+            float extrapolatedZero = u2 - (delta * 2.0f);
+            
+            // Ensure it never drops below Death
+            extrapolatedZero = Mathf.Max(extrapolatedZero, uDeath);
+            
+            // Interpolate between my new "Zero" and U2
+            return Mathf.Lerp(extrapolatedZero, u2, lsScore / 2.0f);
+        }
         
-        for (int i = 0; i < ONS_Distribution.Length; i++)
-        {
-            cumulative += ONS_Distribution[i];
-            if (dice <= cumulative) return i;
-        }
-        return 8; // Otherwise, assume they're in the mode (tier 8)
+        // Map: 2->1, 4->2, 6->3, 8->4, 10->5
+        float t = lsScore / 2.0f; 
+        
+        int lower = Mathf.FloorToInt(t);
+        int upper = Mathf.CeilToInt(t);
+        float lerp = t - lower;
+
+        // Safety Clamp
+        if (upper >= curve.Length) return u10;
+
+        return Mathf.Lerp(curve[lower], curve[upper], lerp);
     }
 
-    // Calculates utility for ONE person based on their Tier + Curve
-    public static float GetSinglePersonUtility(int tier, float[] utilityCurve)
+    // f: (LS_Array, UtilCurve) -> Avg_Utility
+    // Calculates the average utility ONE person perceives from a WHOLE population distribution
+    public static float EvaluateDistribution(int[] populationLS, float[] evaluatorCurve)
     {
-        int maxTierONS = 10;
-        int maxCurveIndex = utilityCurve.Length - 1; // Usually 5
-
-        // Map 0-10 Tier to 0-5 Curve
-        float ratio = (float)tier / maxTierONS;
-        float mappedIndex = ratio * maxCurveIndex;
-
-        int lowerIndex = Mathf.FloorToInt(mappedIndex);
-        int upperIndex = Mathf.CeilToInt(mappedIndex);
-        float t = mappedIndex - lowerIndex;
-
-        float valLower = utilityCurve[lowerIndex];
-        float valUpper = utilityCurve[upperIndex];
-
-        return Mathf.Lerp(valLower, valUpper, t);
-    }
-
-    // FUNCTION: f(LSarray, UtilCurve) -> Utility
-    // Given a specific preference curve, calculates the average utility of a population 
-    // Take everyone's status (population tiers of LS - i.e. 1, 5, 3 : means the three people are in tiers 1, 5 and 3), and use one person's specific curve to turn everyone's LS tier into a utility, and average them.
-    // What utility does one derive from a given wealth distribution?
-    public static float EvaluateDistribution(int[] populationTiers, float[] utilityCurve)
-    {
-        float totalUtility = 0;
-
-        foreach (int tier in populationTiers)
+        double totalUtility = 0; // Double for precision
+        for (int i = 0; i < populationLS.Length; i++)
         {
-            totalUtility += GetSinglePersonUtility(tier, utilityCurve);
+            totalUtility += GetUtilityForPerson(populationLS[i], evaluatorCurve);
         }
-
-        return totalUtility / populationTiers.Length;
+        return (float)(totalUtility / populationLS.Length);
     }
 }

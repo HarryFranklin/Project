@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Austerity
+  m_Name: Tax Breaks (Rich)
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Austerity
-  description: Cuts to public spending to reduce national debt. Puts heavy pressure
-    on welfare and public services.
+  policyName: Tax Breaks (Rich)
+  description: Reducing the top rate of tax to encourage investment. Often paid for
+    by reducing public funding.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0
+  changeForRich: 2
   changeForMiddle: -1
-  changeForPoor: -2
+  changeForPoor: -1

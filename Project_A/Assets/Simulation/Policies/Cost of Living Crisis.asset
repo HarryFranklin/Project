@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Austerity
+  m_Name: Cost of Living Crisis
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Austerity
-  description: Cuts to public spending to reduce national debt. Puts heavy pressure
-    on welfare and public services.
+  policyName: Cost of Living Crisis
+  description: (Scenario) Inflation Spirals, reducing the real-terms value of wages
+    and benefits.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0
-  changeForMiddle: -1
-  changeForPoor: -2
+  changeForRich: -1
+  changeForMiddle: -2
+  changeForPoor: -3

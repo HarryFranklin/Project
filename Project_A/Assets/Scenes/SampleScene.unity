@@ -1402,20 +1402,23 @@ MonoBehaviour:
   dataReader: {fileID: 417024558}
   policies:
   - {fileID: 11400000, guid: 7931d30b49f2b9e4e8628493b1a2e3ee, type: 2}
-  - {fileID: 11400000, guid: 7b5d4ab26849d0647958218e8770e3ab, type: 2}
-  - {fileID: 11400000, guid: b1fc95bb1446f974693334e5ec9588a9, type: 2}
-  - {fileID: 11400000, guid: c733024c89a301945a35e2ae6256f716, type: 2}
-  - {fileID: 11400000, guid: f0b0de24700907648b2b289ef7340e9c, type: 2}
-  - {fileID: 11400000, guid: 339c823b991cbea468aa29bd49532fa8, type: 2}
-  personPrefab: {fileID: 3890215646749294278, guid: c4cfe97abd233114999cc6ff8f461c19, type: 3}
-  container: {fileID: 1246183526}
-  policyNameText: {fileID: 844979402}
-  policyDescriptionText: {fileID: 1318555331}
+  - {fileID: 11400000, guid: 58b1da14cfa40da4095a2f7598fb98a2, type: 2}
+  - {fileID: 11400000, guid: a46dfbafb59836244b290fc1d7910d2d, type: 2}
+  - {fileID: 11400000, guid: a062b17eb9dec324db56e40117ef801d, type: 2}
+  - {fileID: 11400000, guid: ef2e313111e6c4149935e10f32eadd68, type: 2}
+  - {fileID: 11400000, guid: 9d47f273986a9a34e9213145baf63bc4, type: 2}
+  - {fileID: 11400000, guid: 9a8043efc27472e4a9bbef21c850b9f0, type: 2}
+  - {fileID: 11400000, guid: 9dc3e0cabccec9a4a805325f6f1cd489, type: 2}
+  - {fileID: 11400000, guid: 60db6b7e9eb84474998bdf4285acfc6c, type: 2}
+  - {fileID: 11400000, guid: ef50123f5ca541049a6bbfa6beae0fb7, type: 2}
+  policyTitleText: {fileID: 844979402}
+  policyDescText: {fileID: 1318555331}
   policyStatsText: {fileID: 699122555}
+  container: {fileID: 1246183526}
+  personPrefab: {fileID: 3890215646749294278, guid: c4cfe97abd233114999cc6ff8f461c19, type: 3}
   faceHappy: {fileID: 674305466, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceNeutral: {fileID: -2030909350, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceSad: {fileID: 2095936593, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
-  activePolicy: {fileID: 0}
 --- !u!4 &1862640735
 Transform:
   m_ObjectHideFlags: 0
