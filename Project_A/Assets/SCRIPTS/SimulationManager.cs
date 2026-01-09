@@ -26,6 +26,7 @@ public class SimulationManager : MonoBehaviour
     private int policyIndex = -1; 
 
     // Cache current results
+    private List<Respondent> _cachedPopulationList; // Cache because dicts are unordered
     private int[] _currentPopulationLS;
     private int[] _baselineLS;
 
@@ -38,8 +39,10 @@ public class SimulationManager : MonoBehaviour
         {
             r.currentLS = WelfareMetrics.GetWeightedRandomLS(onsDist);
         }
+        
+        _cachedPopulationList = new List<Respondent>(respondents.Values);
 
-        foreach (var r in respondents.Values)
+        foreach (var r in _cachedPopulationList)
         {
             GameObject respondent = Instantiate(personPrefab, container);
             RespondentVisual respondentVisual = respondent.GetComponent<RespondentVisual>();
@@ -59,9 +62,8 @@ public class SimulationManager : MonoBehaviour
 
     void UpdateSimulation()
     {
-        Respondent[] population = new List<Respondent>(respondents.Values).ToArray();
+        Respondent[] population = _cachedPopulationList.ToArray();
         
-        // FIX 1: Initialize the CLASS variables, not local ones
         _baselineLS = new int[population.Length];
         _currentPopulationLS = new int[population.Length];
 
