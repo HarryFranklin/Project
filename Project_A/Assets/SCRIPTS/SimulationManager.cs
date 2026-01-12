@@ -21,6 +21,10 @@ public class SimulationManager : MonoBehaviour
     public TMP_Text comparisonSubtitleText; // e.g. "Default vs. Wealth Tax"
     public TMP_Text comparisonBodyText;     // Other stats, fairness index etc.
 
+    [Header("Choice Mode (Drag Policies Here)")]
+    public Policy policyOptionA;
+    public Policy policyOptionB;
+
     [Header("Visual Configuration")]
     public Transform container;
     public GameObject personPrefab; 
@@ -165,26 +169,64 @@ public class SimulationManager : MonoBehaviour
             Respondent r = population[i];
 
             // A. Calculate metrics
+
+            // uSelf = current personal utility for current LS (determines Y axis)
             float uSelf = WelfareMetrics.GetUtilityForPerson(_currentPopulationLS[i], r.personalUtilities);
+            // uSelfBase = baseline personal utility for LS at the start/status quo
             float uSelfBase = WelfareMetrics.GetUtilityForPerson(_baselineLS[i], r.personalUtilities);
+
+            // for later, wellbeing change is uSelf - uSelfBase...
             
-            float wOld = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
-            float wNew = WelfareMetrics.EvaluateDistribution(_currentPopulationLS, r.societalUtilities);
+            // uSocietyBase = baseline societal utility for fairness at the start
+            float uSocietyBase = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
+            // uSocietyCurrent = current societal utility for fairness at this moment
+            float uSocietyCurrent = WelfareMetrics.EvaluateDistribution(_currentPopulationLS, r.societalUtilities);
 
             // B. Add to totals
-            totalBaseSocial += wOld;
-            totalCurrSocial += wNew;
+            totalBaseSocial += uSocietyBase;
+            totalCurrSocial += uSocietyCurrent;
             totalBasePersonal += uSelfBase;
             totalCurrPersonal += uSelf;
 
             // C. Visual logic (Happy/Sad)
             Sprite face = faceNeutral;
-            if (wNew > wOld + 0.01f) { face = faceHappy; happyCount++; }
-            else if (wNew < wOld - 0.01f) face = faceSad; 
+
+            if (_activePolicy == null)
+            {
+                // Compare Societal Utility vs. Personal Utility                
+                // Logic: "Am I doing better or worse than the average person?"
+                
+                // Gap = my utility vs societal average
+                float gap = uSelf - uSocietyBase; 
+
+                // If gap is positive, I'm above average (privileged) = happy/neutral
+                if (gap > 0.05f) // Using 0.05f as a small threshold
+                {
+                    face = faceHappy; 
+                    happyCount++;
+                }
+                // If gap is negative, I'm below average (deprived) = sad
+                else if (gap < -0.05f) 
+                {
+                    face = faceSad;   
+                }
+            }
+            else
+            {
+                // "Is the new world fairer than the old world?"
+                if (uSocietyCurrent > uSocietyBase + 0.01f) 
+                { 
+                    face = faceHappy; happyCount++;
+                }
+                else if (uSocietyCurrent < uSocietyBase - 0.01f) 
+                {
+                    face = faceSad; 
+                }
+            }
 
             // D. Trigger visuals
             // This calls the lerp logic in RespondentVisual
-            respondentList[i].UpdateVisuals(uSelf, face);
+            respondentList[i].UpdateVisuals(_currentPopulationLS[i], uSelf, face);
          }
          
          // E. Update the comparison panel
@@ -192,8 +234,18 @@ public class SimulationManager : MonoBehaviour
          UpdateScoreUI(pName, totalBaseSocial, totalCurrSocial, totalBasePersonal, totalCurrPersonal, happyCount, population.Length);
     }
 
-    // --- UI HELPERS ---
+    // --- CHOICE HELPERS ---
+    public void PreviewOptionA()
+    {
+        if (policyOptionA != null) ApplyAndAnimate(policyOptionA);
+    }
 
+    public void PreviewOptionB()
+    {
+        if (policyOptionB != null) ApplyAndAnimate(policyOptionB);
+    }
+
+    // --- UI HELPERS ---
     void UpdateScoreUI(string policyName, double baseSoc, double currSoc, double basePers, double currPers, int happyCount, int totalPop)
     {
         if (comparisonSubtitleText) comparisonSubtitleText.text = $"Default vs. {policyName}";

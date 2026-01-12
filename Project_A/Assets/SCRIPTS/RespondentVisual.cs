@@ -13,6 +13,11 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     private Transform parent;
     private SimulationManager _manager;
 
+    // Animation Settings
+    private float moveSpeed = 5.0f; // Higher = Faster movement
+    private Vector2 _targetPosition;
+    private bool _isInitialised = false;
+
     // Link the visual "dot" to the data itself and connect the manager to it
     public void Initialise(Respondent respondent, SimulationManager manager)
     {
@@ -20,43 +25,57 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         rect = GetComponent<RectTransform>();
         parent = transform.parent;
         _manager = manager;
+
+        // Initial setup: Snap to position immediately so they don't fly in from (0,0)
+        _targetPosition = CalculatePosition(data.currentLS, 0); // Start at 0 utility visual
+        rect.anchoredPosition = _targetPosition;
+        _isInitialised = true;
+    }
+
+    void Update()
+    {
+        if (_isInitialised)
+        {
+            // Smoothly move from current position -> target position
+            rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, _targetPosition, Time.deltaTime * moveSpeed);
+        }
     }
 
     // Calculate and update the X, Y and face of each person
     // X - based on wealth/LS (L -> R = Poor -> Rich) w/ random jitter
     // Y - u_Self (personal utility)
     // Face - Happy, sad or neutral
-    public void UpdateVisuals(float normalisedSelfUtility, Sprite face)
+    public void UpdateVisuals(int currentLS, float normalisedSelfUtility, Sprite face)
     {
         if (faceImage) faceImage.sprite = face;
 
         if (parent)
         {
-            RectTransform parentRect = parent.GetComponent<RectTransform>();
-            float w = parentRect.rect.width;
-            float h = parentRect.rect.height;
-
-            // --- (X = Life Satisfaction / Wealth) ---
-            // 1. Get their LS (0 to 10)
-            int ls = data.currentLS; 
-            
-            // 2. Normalise to 0->1 (approximate)
-            float normalisedLS = ls / 10.0f; 
-
-            // 3. Map to Screen Width (-Width/2 to +Width/2)
-            // A noise (data.id * 3.0f) so people with the same LS don't stack perfectly on top of each other
-            float jitter = (data.id % 10) * 4.0f; 
-            float xPos = ((normalisedLS * (w * 0.8f)) - (w * 0.4f)) + jitter;
-
-            // --- Y AXIS (Personal Utility) ---
-            // Map 0->1 utility to Bottom->Top
-            float yPos = (normalisedSelfUtility * h) - (h * 0.5f);
-
-            rect.anchoredPosition = new Vector2(xPos, yPos);
+            // Instead of setting position directly, set the target for it to lerp to
+            _targetPosition = CalculatePosition(currentLS, normalisedSelfUtility);
         }
     }
 
-    // - Helper Functions -
+    // --- HELPER FUNCTIONS ---
+
+    // X,Y Maths Helper
+    private Vector2 CalculatePosition(int lsScore, float selfUtility)
+    {
+        RectTransform parentRect = parent.GetComponent<RectTransform>();
+        float w = parentRect.rect.width;
+        float h = parentRect.rect.height;
+
+        // X-Axis: Wealth (0-10)
+        float normalisedLS = lsScore / 10.0f; 
+        float jitter = (data.id % 10) * 4.0f; 
+        float xPos = ((normalisedLS * (w * 0.8f)) - (w * 0.4f)) + jitter;
+
+        // Y-Axis: Utility
+        float yPos = (selfUtility * h) - (h * 0.5f);
+
+        return new Vector2(xPos, yPos);
+    }
+
     // Called when Mouse Enters the face
     public void OnPointerEnter(PointerEventData eventData)
     {
