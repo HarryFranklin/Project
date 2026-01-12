@@ -2,13 +2,16 @@
 public class Respondent 
 {
     public int id;
-    public float[] personalUtilities; // Indices: 0=Death, 1=E, 2=D, 3=C, 4=B, 5=A
+    
+    // The "Utility Curves" from the CSV (Death, 2, 4, 6, 8, 10)
+    public float[] personalUtilities; 
     public float[] societalUtilities;
     
-    // 0=Death, 1=Destitute ... 5=Thriving
-    public int currentTier = 2; // Default to middle
-    public float happinessWithPolicy = 0f; 
+    // State
+    public int currentLS;      // 0-10 Scale
+    public int wealthTier;     // 0-10 Scale (For future policies like Wealth Tax)
 
+    // Each person has an ID and two utility arrays, u_Self and u_Others
     public Respondent(int id) 
     {
         this.id = id;

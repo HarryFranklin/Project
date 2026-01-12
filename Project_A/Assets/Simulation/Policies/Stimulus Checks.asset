@@ -13,5 +13,10 @@ MonoBehaviour:
   m_Name: Stimulus Checks
   m_EditorClassIdentifier: Assembly-CSharp::Policy
   policyName: Stimulus Checks
-  taxSeverity: -2
-  socialGain: 0
+  description: A one-off cash payment to every household to stimulate the economy
+    during a recession.
+  richThreshold: 8
+  poorThreshold: 4
+  changeForRich: 0
+  changeForMiddle: 1
+  changeForPoor: 1

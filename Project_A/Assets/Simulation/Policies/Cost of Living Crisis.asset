@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Wealth Tax
+  m_Name: Cost of Living Crisis
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Wealth Tax
-  description: "A new tax on assets over \xA31m, used to fund targeted welfare support
-    for the lowest earners."
+  policyName: Cost of Living Crisis
+  description: (Scenario) Inflation Spirals, reducing the real-terms value of wages
+    and benefits.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -2
-  changeForMiddle: 0
-  changeForPoor: 2
+  changeForRich: -1
+  changeForMiddle: -2
+  changeForPoor: -3

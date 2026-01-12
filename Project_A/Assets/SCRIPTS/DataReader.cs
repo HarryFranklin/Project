@@ -7,6 +7,7 @@ public class DataReader : MonoBehaviour
     public TextAsset personalFile;
     public TextAsset societalFile;
 
+    // Parse the two .csv files, give IDs and make the main dict of all people/all respondents
     public Dictionary<int, Respondent> GetRespondents() 
     {
         Dictionary<int, Respondent> respondents = new Dictionary<int, Respondent>();

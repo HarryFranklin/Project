@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Universal Basic Income
   m_EditorClassIdentifier: Assembly-CSharp::Policy
   policyName: Universal Basic Income
-  taxSeverity: 2
-  socialGain: 3
-  isRedistributive: 1
+  description: A guaranteed monthly payment for every citizen, funded by higher taxes
+    on high earners.
+  richThreshold: 8
+  poorThreshold: 4
+  changeForRich: -1
+  changeForMiddle: 1
+  changeForPoor: 3

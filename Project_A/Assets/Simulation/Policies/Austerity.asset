@@ -13,5 +13,10 @@ MonoBehaviour:
   m_Name: Austerity
   m_EditorClassIdentifier: Assembly-CSharp::Policy
   policyName: Austerity
-  taxSeverity: -1
-  socialGain: -3
+  description: Cuts to public spending to reduce national debt. Puts heavy pressure
+    on welfare and public services.
+  richThreshold: 8
+  poorThreshold: 4
+  changeForRich: 0
+  changeForMiddle: -1
+  changeForPoor: -2

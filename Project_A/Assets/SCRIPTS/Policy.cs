@@ -1,66 +1,57 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewPolicy", menuName = "Simulation/Policy", order = 1)]
-public class Policy : ScriptableObject 
+[CreateAssetMenu(fileName = "NewPolicy", menuName = "Simulation/Policy")]
+public class Policy : ScriptableObject
 {
-    public string policyName = "New Policy";
-    
-    [Header("Impact Settings")]
-    [Tooltip("Positive = Cost to individual. Negative = Benefit to individual.")]
-    [Range(-5, 5)] public int taxSeverity = 0;   
+    public string policyName;
+    [TextArea] public string description;
 
-    [Tooltip("Positive = Society improves. Negative = Society worsens.")]
-    [Range(-5, 5)] public int socialGain = 0;    
+    [Header("Thresholds")]
+    [Tooltip("Anyone with this Life Satisfaction (LS) or HIGHER is considered 'Rich'")]
+    public int richThreshold = 8; 
 
-    [Header("Advanced Logic")]
-    [Tooltip("If TRUE, the 'Tax Severity' is applied based on wealth.\nRich people pay the tax.\nPoor people RECEIVE the tax value as a benefit.")]
-    public bool isRedistributive = false;
+    [Tooltip("Anyone with this LS or LOWER is considered 'Poor'")]
+    public int poorThreshold = 4;
 
-    public float CalculateImpact(Respondent r) 
+    [Header("Impact Values")]
+    [Tooltip("Change applied to the Rich")]
+    public int changeForRich = 0;
+
+    [Tooltip("Change applied to the Middle (everyone else)")]
+    public int changeForMiddle = 0;
+
+    [Tooltip("Change applied to the Poor")]
+    public int changeForPoor = 0;
+
+
+    // FUNCTION: f(LSarray) -> LSarray
+    // Take the current LS data and change it based on this policy's parameters
+    public int[] ApplyPolicy(Respondent[] population)
     {
-        // 1. DETERMINE PERSONAL IMPACT
-        int calculatedTax = taxSeverity;
+        int[] newLS = new int[population.Length];
 
-        if (isRedistributive)
+        for (int i = 0; i < population.Length; i++)
         {
-            // REDISTRIBUTIVE LOGIC (UBI)
-            // Tier 0, 1, 2 (Poor/Mid): They GAIN wealth (Tax becomes negative)
-            // Tier 3, 4, 5 (Rich): They LOSE wealth (Tax stays positive)
-            
-            if (r.currentTier < 3) 
+            int current = population[i].currentLS;
+            int delta = 0;
+
+            if (current >= richThreshold)
             {
-                // I am poor, so the 'Tax' is actually a payment TO me.
-                // We invert the tax severity.
-                calculatedTax = -Mathf.Abs(taxSeverity); 
+                delta = changeForRich;
             }
-            else 
+            else if (current <= poorThreshold)
             {
-                // I am rich, so I pay the full tax.
-                calculatedTax = Mathf.Abs(taxSeverity);
+                delta = changeForPoor;
             }
+            else
+            {
+                delta = changeForMiddle;
+            }
+
+            // Clamp ensures we stay within the 0-10 scale
+            newLS[i] = Mathf.Clamp(current + delta, 0, 10);
         }
 
-        // 2. APPLY TO PERSONAL LADDER
-        int currentPersonalTier = r.currentTier;
-        // Subtracting a negative tax means adding wealth
-        int newPersonalTier = Mathf.Clamp(currentPersonalTier - calculatedTax, 0, 5);
-        
-        float personalUtilityOld = r.personalUtilities[currentPersonalTier];
-        float personalUtilityNew = r.personalUtilities[newPersonalTier];
-        
-        float personalChange = personalUtilityNew - personalUtilityOld; 
-
-        // 3. APPLY TO SOCIETAL LADDER
-        // UBI usually has a high social gain (poverty reduction)
-        int currentSocietalTier = 2; 
-        int newSocietalTier = Mathf.Clamp(currentSocietalTier + socialGain, 0, 5);
-
-        float societalUtilityOld = r.societalUtilities[currentSocietalTier];
-        float societalUtilityNew = r.societalUtilities[newSocietalTier];
-
-        float societalChange = societalUtilityNew - societalUtilityOld; 
-
-        // 4. THE TRADE-OFF
-        return personalChange + societalChange;
+        return newLS;
     }
 }
