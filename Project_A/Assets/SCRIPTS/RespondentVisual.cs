@@ -44,34 +44,48 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     // Calculate and update the X, Y and face of each person
     // X - based on wealth/LS (L -> R = Poor -> Rich) w/ random jitter
     // Y - u_Self (personal utility)
-    // Face - Happy, sad or neutral
+    // Face - Happy, sad or neutral - or dead
     public void UpdateVisuals(int currentLS, float normalisedSelfUtility, Sprite face)
     {
-        if (faceImage) faceImage.sprite = face;
+        if (faceImage) // if not null
+        {
+            faceImage.sprite = face;
+            faceImage.color = Color.white; // Just to check
+        }
 
         if (parent)
         {
-            // Instead of setting position directly, set the target for it to lerp to
             _targetPosition = CalculatePosition(currentLS, normalisedSelfUtility);
         }
     }
 
     // --- HELPER FUNCTIONS ---
-
     // X,Y Maths Helper
-    private Vector2 CalculatePosition(int lsScore, float selfUtility)
-    {
+    private Vector2 CalculatePosition(int lsScore, float uSelf)
+    {  
+        // Grab data of the container the faces go in
         RectTransform parentRect = parent.GetComponent<RectTransform>();
         float w = parentRect.rect.width;
         float h = parentRect.rect.height;
 
-        // X-Axis: Wealth (0-10)
+        // Case: Death (-1)
+        if (lsScore == -1)
+        {
+            // Drop to the absolute bottom margin
+            // Spread randomly across X so they don't stack on one pixel
+            float jitterDeath = (data.id % 20) * (w / 20.0f) - (w / 2.0f); // ?
+            
+            // Position: X = Random, Y = Bottom edge + padding
+            return new Vector2(jitterDeath, -(h * 0.5f) + 15f); 
+        }
+
+        // Case: Alive (2-10)
         float normalisedLS = lsScore / 10.0f; 
+        
         float jitter = (data.id % 10) * 4.0f; 
         float xPos = ((normalisedLS * (w * 0.8f)) - (w * 0.4f)) + jitter;
 
-        // Y-Axis: Utility
-        float yPos = (selfUtility * h) - (h * 0.5f);
+        float yPos = (uSelf * h) - (h * 0.5f);
 
         return new Vector2(xPos, yPos);
     }

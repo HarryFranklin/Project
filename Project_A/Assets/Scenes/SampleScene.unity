@@ -2592,6 +2592,7 @@ MonoBehaviour:
   faceHappy: {fileID: 674305466, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceNeutral: {fileID: -2030909350, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceSad: {fileID: 2095936593, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
+  faceDead: {fileID: 21300000, guid: 1b307972a226d694697c2d79b77a29d7, type: 3}
 --- !u!4 &1862640735
 Transform:
   m_ObjectHideFlags: 0

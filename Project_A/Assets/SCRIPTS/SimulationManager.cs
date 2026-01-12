@@ -28,7 +28,7 @@ public class SimulationManager : MonoBehaviour
     [Header("Visual Configuration")]
     public Transform container;
     public GameObject personPrefab; 
-    public Sprite faceHappy, faceNeutral, faceSad;
+    public Sprite faceHappy, faceNeutral, faceSad, faceDead;
 
     // Internal data
     private Dictionary<int, Respondent> respondents;
@@ -166,19 +166,19 @@ public class SimulationManager : MonoBehaviour
 
          for (int i = 0; i < population.Length; i++)
          {
+            // This person and their current and default/base LS
             Respondent r = population[i];
+            int currentLS = _currentPopulationLS[i];
+            int baselineLS = _baselineLS[i];
 
             // A. Calculate metrics
-
-            // uSelfCurrent = current personal utility for current LS (determines Y axis)
-            float uSelfCurrent = WelfareMetrics.GetUtilityForPerson(_currentPopulationLS[i], r.personalUtilities);
-            // uSelfBase = baseline personal utility for LS at the start/status quo
-            float uSelfBase = WelfareMetrics.GetUtilityForPerson(_baselineLS[i], r.personalUtilities);
             
-            // uSocietyBase = baseline societal utility for fairness at the start
-            float uSocietyBase = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
-            // uSocietyCurrent = current societal utility for fairness at this moment
+            // Given current LS...
+            float uSelfCurrent = WelfareMetrics.GetUtilityForPerson(currentLS, r.personalUtilities);
             float uSocietyCurrent = WelfareMetrics.EvaluateDistribution(_currentPopulationLS, r.societalUtilities);
+            // For default LS...
+            float uSelfBase = WelfareMetrics.GetUtilityForPerson(baselineLS, r.personalUtilities);
+            float uSocietyBase = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
 
             // B. Add to totals
             totalBaseSocial += uSocietyBase;
@@ -187,67 +187,63 @@ public class SimulationManager : MonoBehaviour
             totalCurrPersonal += uSelfCurrent;
 
             // C. Visual logic (Happy/Sad)
-            Sprite face = faceNeutral;
+            // Logic extracted to helper method below to keep this loop clean
+            Sprite face = DetermineFaceExpression(r, currentLS, uSelfCurrent, uSocietyBase, uSocietyCurrent);
 
-            // if looking at status quo
-            if (_activePolicy == null)
-            {
-                // Assume anyone with 8+ LS is happy        
-                if (r.currentLS >= 8)
-                {
-                    face = faceHappy;
-                    happyCount++;
-                }
-                // Assume anyone 3- LS is sad
-                else if (r.currentLS <= 3)
-                {
-                    face = faceSad;
-                }
-                else
-                {
-                    // For those in the middle, calc the gap bnetween uSelfCurrent and uOthers
-                    float gap = uSelfCurrent - uSocietyBase; 
-                    float buffer = 0.05f;
-
-                    // if their uSelfCurrent > uOthers (they're happier than others are)
-                    if (gap > buffer) 
-                    {
-                        face = faceHappy; 
-                        happyCount++;
-                    }
-                    // else, they're sadder than others
-                    else if (gap < -buffer) 
-                    {
-                        face = faceSad;   
-                    }
-                    else
-                    {
-                        // Content/sad faces
-                    }
-                }
-            }
-            // if comparing two policies
-            else
-            {
-                // "Is the new world fairer than the old world?"
-                if (uSocietyCurrent > uSocietyBase + 0.01f) 
-                { 
-                    face = faceHappy; happyCount++;
-                }
-                else if (uSocietyCurrent < uSocietyBase - 0.01f) 
-                {
-                    face = faceSad; 
-                }
-            }
+            // Use the face to gather whether they're happy rather than doing another calculation
+            if (face == faceHappy) happyCount++;
 
             // D. Trigger visuals
-            // This calls the lerp logic in RespondentVisual
-            respondentList[i].UpdateVisuals(_currentPopulationLS[i], uSelfCurrent, face);
+            respondentList[i].UpdateVisuals(currentLS, uSelfCurrent, face);
          }
          
          // E. Update the comparison panel
-         string pName = _activePolicy != null ? _activePolicy.policyName : "Default";
+         string pName = _activePolicy != null ? _activePolicy.policyName : "Default"; // Safety check for policy name, "default" if null
          UpdateScoreUI(pName, totalBaseSocial, totalCurrSocial, totalBasePersonal, totalCurrPersonal, happyCount, population.Length);
+    }
+
+    // Helper to determine face expresision based on LS, self and social utilities for now and before
+    Sprite DetermineFaceExpression(Respondent r, int currentLS, float uSelfCurrent, float uSocietyBase, float uSocietyCurrent)
+    {
+        // Case: Death
+        if (currentLS == -1)
+        {
+            return faceDead;
+        }
+        // if looking at status quo
+        else if (_activePolicy == null)
+        {
+            // Assume anyone with 8+ LS is happy        
+            if (r.currentLS >= 8)
+            {
+                return faceHappy;
+            }
+            // Assume anyone 3- LS is sad
+            else if (r.currentLS <= 3)
+            {
+                return faceSad;
+            }
+            else
+            {
+                // For those in the middle, calc the gap between uSelfCurrent and uOthers
+                float gap = uSelfCurrent - uSocietyBase; 
+                float buffer = 0.05f;
+
+                if (gap > buffer) return faceHappy; 
+                else if (gap < -buffer) return faceSad;   
+                else return faceNeutral;
+            }
+        }
+        // if comparing two policies
+        else
+        {
+            // Happy because society is fairer
+            if (uSocietyCurrent > uSocietyBase + 0.01f) return faceHappy;
+            // Unappy because society is less fair
+            else if (uSocietyCurrent < uSocietyBase - 0.01f) return faceSad; 
+        }
+        
+        return faceNeutral;
     }
 
     // --- CHOICE HELPERS ---

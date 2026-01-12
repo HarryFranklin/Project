@@ -1,48 +1,50 @@
+using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
 public static class WelfareMetrics
 {
-    // Real ONS Data (Updated UK Distribution)
-    // Converted from percentages to normalised floats (0.0 to 1.0)
-    public static readonly float[] ONS_Distribution = new float[] 
+    // ONS Data (UK Life Satisfaction Distribution 0-10)
+    private static readonly float[] ONS_Distribution_Raw = new float[]
     {
-        // Remember it's tiny numbers - 11% is 0.11, 0.4% is 0.004
-        0.0040f, // Tier 0: 0.40%
-        0.0062f, // Tier 1: 0.62%
-        0.0085f, // Tier 2: 0.85%
-        0.0139f, // Tier 3: 1.39%
-        0.0247f, // Tier 4: 2.47%
-        0.0749f, // Tier 5: 7.49%
-        0.0864f, // Tier 6: 8.64%
-        0.2129f, // Tier 7: 21.29%
-        0.3256f, // Tier 8: 32.56% (The Mode - Middle Class)
-        0.1315f, // Tier 9: 13.15%
-        0.1124f  // Tier 10: 11.24% (The Elite)
+        // Remember it's tiny percentages. 0.06 is 6%.
+        0.0040f, // 0 - Discard
+        0.0030f, // 1 - Discard
+        0.0100f, // 2
+        0.0210f, // 3
+        0.0350f, // 4
+        0.0750f, // 5
+        0.1000f, // 6
+        0.2240f, // 7
+        0.3150f, // 8
+        0.1510f, // 9
+        0.0620f  // 10
     };
 
     // Get ONS data, fix and normalise it
     public static float[] GetBaselineDistribution()
     {
-        float[] distribution = (float[])ONS_Distribution.Clone();
+        float[] dist = new float[11];
+        float validTotal = 0;
 
-        // If distribution[1] < distribution[0]
-        if (distribution[0] > distribution[1])
+        // 1. Calculate the total probability of valid states (2-10)
+        for (int i = 2; i < 11; i++)
         {
-            // Swap them
-            float temp = distribution[0]; 
-            distribution[0] = distribution[1];
-            distribution[1] = temp;
+            validTotal += ONS_Distribution_Raw[i];
         }
 
-        // Renormalise so sum is 1.0
-        float sum = distribution.Sum();
-        for (int i = 0; i < distribution.Length; i++) 
+        // 2. Assign renormalised probabilities
+        // Set 0 and 1 to 0
+        dist[0] = 0.0f; 
+        dist[1] = 0.0f;
+
+        for (int i = 2; i < 11; i++)
         {
-            distribution[i] /= sum;
+            // Renormalise: (Raw / Total valid) -> scales it up to 100%
+            dist[i] = ONS_Distribution_Raw[i] / validTotal;
         }
 
-        return distribution;
+        return dist;
     }
 
     // Weighted dice roll for each person, weighted by ONS distribution
@@ -50,68 +52,56 @@ public static class WelfareMetrics
     {
         float r = Random.value;
         float cumulative = 0f;
-        for (int i = 0; i < distribution.Length; i++)
+        for (int i = 2; i < distribution.Length; i++) // Start at 2 as there's no chance of anyone being 0 and 1
         {
             cumulative += distribution[i];
             if (r <= cumulative) return i;
         }
-        return 8; // Fallback
+        return 10; // Fallback
     }
 
-    // --- 2. UTILITY FUNCTIONS ---
-    // uSelf and uOthers calculations
-
-    // Calculate U_self - ignore death, extrapolate the 0 value by using the slop from 4 to 2
-    // Map ONS state to utility personal uSelf curve
-    public static float GetUtilityForPerson(int lsScore, float[] uSelfCurve)
+    // --- UTILITY FUNCTIONS ---
+    // f:(LS) -> U 
+    // i.e. what is the utility of someone at LS=5?
+    public static float GetUtilityForPerson(int lsScore, float[] curve)
     {
-        // 1. Fetch known utilities from the CSV
-        float uDeath = uSelfCurve[0]; // State Death (Floor)
-        float u2  = uSelfCurve[1]; // State E
-        float u4  = uSelfCurve[2]; // State D
-        float u6  = uSelfCurve[3]; // State C
-        float u8  = uSelfCurve[4]; // State B
-        float u10 = uSelfCurve[5]; // State A - perfect
-
-        // Excluding death?
-        // Exclude death because LS[0] means alive but miserable. Even if a policy pushes someone to LS[0], they're still alive
-        // So don't assign people the death utility
-
-        // 2. Handle the gap at LS 0 and LS 1 (Extrapolation)
-        if (lsScore < 2) // is 1 or 0
+        // Case A: Death
+        if (lsScore == -1) 
         {
-            // Calculate the slope between LS 4 and LS 2
-            float delta = (u4 - u2) / 2.0f; 
-
-            // If I am at LS 0, I am 2 steps below LS 2.
-            // U_0 = U_2 - (Slope * 2)
-            float extrapolatedZero = u2 - (delta * 2.0f);
-            
-            // Ensure it never drops below Death
-            extrapolatedZero = Mathf.Max(extrapolatedZero, uDeath);
-            
-            // Lerp between zero and U2
-            return Mathf.Lerp(extrapolatedZero, u2, lsScore / 2.0f);
+            return curve[0]; // 0th curve state is state F, death
         }
-        
-        // Map: 2->1, 4->2, 6->3, 8->4, 10->5
-        float t = lsScore / 2.0f; 
-        
-        int lower = Mathf.FloorToInt(t);
-        int upper = Mathf.CeilToInt(t);
-        float lerp = t - lower;
 
-        // Safety Clamp
-        if (upper >= uSelfCurve.Length) return u10;
+        // Case B: Alive (2-10)
+        // Clamp to 2 to be safe
+        float score = Mathf.Max(lsScore, 2f); // We have no utility data for below LS = 2, so it should be 2 at minimum
 
-        return Mathf.Lerp(uSelfCurve[lower], uSelfCurve[upper], lerp);
+        // MAPPING LOGIC:
+        // LS X -> Index X/2
+        
+        float exactIndex = score / 2.0f;
+        
+        // Interpolate so we can get values between the data points
+        int lowerIndex = Mathf.FloorToInt(exactIndex);
+        int upperIndex = Mathf.CeilToInt(exactIndex);
+        
+        // Safety clamp to valid range (1 to 5)
+        if (lowerIndex < 1) lowerIndex = 1;
+        if (upperIndex > 5) upperIndex = 5;
+        if (lowerIndex > 5) lowerIndex = 5;
+
+        float t = exactIndex - lowerIndex; 
+
+        float valA = curve[lowerIndex];
+        float valB = curve[upperIndex];
+
+        return Mathf.Lerp(valA, valB, t);
     }
 
     // f: (LS_Array, UtilCurve) -> AvgUtility
     // Calculate U_others - take everyone's LS scores and that person's uOthers curve and calculate the average utility each person would get in this scenario
     public static float EvaluateDistribution(int[] populationLS, float[] respondentUOthersCurve)
     {
-        double totalUtility = 0; // Double for precision
+        double totalUtility = 0;
 
         // for every person in the society
         for (int i = 0; i < populationLS.Length; i++)
