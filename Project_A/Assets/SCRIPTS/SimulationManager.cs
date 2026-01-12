@@ -191,26 +191,44 @@ public class SimulationManager : MonoBehaviour
             // C. Visual logic (Happy/Sad)
             Sprite face = faceNeutral;
 
+            // if looking at status quo
             if (_activePolicy == null)
             {
-                // Compare Societal Utility vs. Personal Utility                
-                // Logic: "Am I doing better or worse than the average person?"
-                
-                // Gap = my utility vs societal average
-                float gap = uSelf - uSocietyBase; 
-
-                // If gap is positive, I'm above average (privileged) = happy/neutral
-                if (gap > 0.05f) // Using 0.05f as a small threshold
+                // Assume anyone with 8+ LS is happy        
+                if (r.currentLS >= 8)
                 {
-                    face = faceHappy; 
+                    face = faceHappy;
                     happyCount++;
                 }
-                // If gap is negative, I'm below average (deprived) = sad
-                else if (gap < -0.05f) 
+                // Assume anyone 3- LS is sad
+                else if (r.currentLS <= 3)
                 {
-                    face = faceSad;   
+                    face = faceSad;
+                }
+                else
+                {
+                    // For those in the middle, calc the gap bnetween uSelf and uOthers
+                    float gap = uSelf - uSocietyBase; 
+                    float buffer = 0.05f;
+
+                    // if their uSelf > uOthers (they're happier than others are)
+                    if (gap > buffer) 
+                    {
+                        face = faceHappy; 
+                        happyCount++;
+                    }
+                    // else, they're sadder than others
+                    else if (gap < -buffer) 
+                    {
+                        face = faceSad;   
+                    }
+                    else
+                    {
+                        // Content/sad faces
+                    }
                 }
             }
+            // if comparing two policies
             else
             {
                 // "Is the new world fairer than the old world?"
