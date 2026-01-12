@@ -170,12 +170,10 @@ public class SimulationManager : MonoBehaviour
 
             // A. Calculate metrics
 
-            // uSelf = current personal utility for current LS (determines Y axis)
-            float uSelf = WelfareMetrics.GetUtilityForPerson(_currentPopulationLS[i], r.personalUtilities);
+            // uSelfCurrent = current personal utility for current LS (determines Y axis)
+            float uSelfCurrent = WelfareMetrics.GetUtilityForPerson(_currentPopulationLS[i], r.personalUtilities);
             // uSelfBase = baseline personal utility for LS at the start/status quo
             float uSelfBase = WelfareMetrics.GetUtilityForPerson(_baselineLS[i], r.personalUtilities);
-
-            // for later, wellbeing change is uSelf - uSelfBase...
             
             // uSocietyBase = baseline societal utility for fairness at the start
             float uSocietyBase = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
@@ -186,7 +184,7 @@ public class SimulationManager : MonoBehaviour
             totalBaseSocial += uSocietyBase;
             totalCurrSocial += uSocietyCurrent;
             totalBasePersonal += uSelfBase;
-            totalCurrPersonal += uSelf;
+            totalCurrPersonal += uSelfCurrent;
 
             // C. Visual logic (Happy/Sad)
             Sprite face = faceNeutral;
@@ -207,11 +205,11 @@ public class SimulationManager : MonoBehaviour
                 }
                 else
                 {
-                    // For those in the middle, calc the gap bnetween uSelf and uOthers
-                    float gap = uSelf - uSocietyBase; 
+                    // For those in the middle, calc the gap bnetween uSelfCurrent and uOthers
+                    float gap = uSelfCurrent - uSocietyBase; 
                     float buffer = 0.05f;
 
-                    // if their uSelf > uOthers (they're happier than others are)
+                    // if their uSelfCurrent > uOthers (they're happier than others are)
                     if (gap > buffer) 
                     {
                         face = faceHappy; 
@@ -244,7 +242,7 @@ public class SimulationManager : MonoBehaviour
 
             // D. Trigger visuals
             // This calls the lerp logic in RespondentVisual
-            respondentList[i].UpdateVisuals(_currentPopulationLS[i], uSelf, face);
+            respondentList[i].UpdateVisuals(_currentPopulationLS[i], uSelfCurrent, face);
          }
          
          // E. Update the comparison panel
@@ -362,15 +360,15 @@ public class SimulationManager : MonoBehaviour
 
         if (!found) return;
 
-        float uSelf = WelfareMetrics.GetUtilityForPerson(currentLS, r.personalUtilities);
+        float uSelfCurrent = WelfareMetrics.GetUtilityForPerson(currentLS, r.personalUtilities);
         float uSociety = WelfareMetrics.EvaluateDistribution(_currentPopulationLS, r.societalUtilities);
 
         string info = $"<size=120%><b>Respondent #{r.id}</b></size>\n";
         info += $"<b>Life Satisfaction:</b> {currentLS}/10\n";
-        info += $"<b>Personal Utility:</b> {uSelf:F2}\n";
+        info += $"<b>Personal Utility:</b> {uSelfCurrent:F2}\n";
         info += $"<b>Societal Utility:</b> {uSociety:F2}\n";
         
-        string type = uSelf > uSociety ? "<color=red>Self-Interested</color>" : "<color=green>Altruistic</color>";
+        string type = uSelfCurrent > uSociety ? "<color=red>Self-Interested</color>" : "<color=green>Altruistic</color>";
         info += $"<b>Type:</b> {type}";
 
         // Update both panels so the info is visible regardless of which tab is open
