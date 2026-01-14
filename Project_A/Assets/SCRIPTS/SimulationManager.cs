@@ -7,7 +7,7 @@ public enum AxisVariable
 {
     LifeSatisfaction, // 0-10
     PersonalUtility, // 0-1 (uSelf)
-    SocietalFairness, // 0-1 (uOthers) (evaldist())
+    SocietalUtility, // 0-1 (uOthers) (evaldist())
     Wealth // 0-10 (For later, or not?)
 }
 
@@ -15,8 +15,9 @@ public class SimulationManager : MonoBehaviour
 {
     [Header("Plotting Configuration")]
     public GraphGrid graphGrid; // Panel object
+    public GraphAxisVisuals graphAxes;
     public AxisVariable xAxis = AxisVariable.LifeSatisfaction; // Default
-    public AxisVariable yAxis = AxisVariable.SocietalFairness; // Default
+    public AxisVariable yAxis = AxisVariable.SocietalUtility; // Default
 
     [Header("Data")]
     public DataReader dataReader; 
@@ -84,6 +85,8 @@ public class SimulationManager : MonoBehaviour
         // 5. Initial state
         ShowPolicyInfoTab(); 
         UpdateSimulation();
+
+        UpdateAxes();
     }
 
     // --- TAB SWITCHING UI ---
@@ -281,24 +284,41 @@ public class SimulationManager : MonoBehaviour
     }
 
     // Helper method to select the right data based on the axisvariable type and normalises it right
-    float GetNormalisedValue(Respondent r, int ls, float uSelf, float uOthers, AxisVariable type)
+    float GetNormalisedValue(Respondent r, int ls, float uSelf, float uSocietal, AxisVariable type)
     {
+        // 1. Get the raw value
+        float rawValue = 0f;
+
         if (type == AxisVariable.LifeSatisfaction)
         {
-            return ls / 10.0f; // Map 0-10 to 0.0-1.0
+            rawValue = ls;
         }
         else if (type == AxisVariable.PersonalUtility)
         {
-            return uSelf; // already 0-1
+            rawValue = uSelf;
         }
-        else if (type == AxisVariable.SocietalFairness)
+        else if (type == AxisVariable.SocietalUtility)
         {
-            return uOthers; // already 0-1, calculated from EvaluateDistribution
+            rawValue = uSocietal;
         }
-        else
+
+        // 2. Get the range from the visual script
+        var range = graphAxes.GetRange(type);
+
+        // 3. Normalise with InverseLerp, i.e. 0 in range -5 to 5 becomes 0.5
+        return Mathf.InverseLerp(range.min, range.max, rawValue);
+    }
+
+    // Called when axes are changed in runtime
+    public void UpdateAxes()
+    {
+        if (graphAxes != null)
         {
-            return 0.5f; // fallback
+            graphAxes.UpdateAxesVisuals(xAxis, yAxis);
         }
+
+        // Force refresh of dots to match new axes (safety)
+        CalculateAndRefreshVisuals();
     }
 
     // --- CHOICE HELPERS ---
@@ -440,6 +460,20 @@ public class SimulationManager : MonoBehaviour
             UpdateUI_Policy(_activePolicy);
             
             // Restore the comparison text
+            CalculateAndRefreshVisuals(); 
+        }
+    }
+    
+    // --- Unity method to recompile stuff when I change it in the inspector ---
+    void OnValidate()
+    {
+        // Only run this if the game is playing
+        if (Application.isPlaying)
+        {
+            // Force the Axes to redraw 
+            UpdateAxes();
+
+            // Force the dots to move immediately
             CalculateAndRefreshVisuals(); 
         }
     }
