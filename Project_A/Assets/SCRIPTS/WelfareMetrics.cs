@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-public static class WelfareMetrics
+public class WelfareMetrics
 {
     // ONS Data (UK Life Satisfaction Distribution 0-10)
     private static readonly float[] ONS_Distribution_Raw = new float[]

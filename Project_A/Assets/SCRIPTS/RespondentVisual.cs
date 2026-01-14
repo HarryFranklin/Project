@@ -12,6 +12,7 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     private RectTransform rect;
     private Transform parent;
     private SimulationManager _manager;
+    [SerializeField] private WelfareMetrics welfareMetrics;
 
     // Animation Settings
     private float moveSpeed = 5.0f; // Higher = Faster movement
@@ -40,6 +41,10 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
             rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, _targetPosition, Time.deltaTime * moveSpeed);
         }
     }
+
+    // Changing axes
+    // x = still LS[i]
+    // newY = EvaluateDist for that person
 
     // Calculate and update the X, Y and face of each person
     // X - based on wealth/LS (L -> R = Poor -> Rich) w/ random jitter
@@ -85,9 +90,12 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         float jitter = (data.id % 10) * 4.0f; 
         float xPos = ((normalisedLS * (w * 0.8f)) - (w * 0.4f)) + jitter;
 
-        float yPos = (uSelf * h) - (h * 0.5f);
+        // float yPos = (uSelf * h) - (h * 0.5f);
 
-        return new Vector2(xPos, yPos);
+        // New yPos = that person's EvalDist()
+        float newY = welfareMetrics.EvaluateDistribution(normalisedLS, data.societalUtilities);
+
+        return new Vector2(xPos, newY);
     }
 
     // Called when Mouse Enters the face
