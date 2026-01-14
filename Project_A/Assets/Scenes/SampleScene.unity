@@ -2334,6 +2334,7 @@ GameObject:
   - component: {fileID: 1768523303}
   - component: {fileID: 1768523305}
   - component: {fileID: 1768523304}
+  - component: {fileID: 1768523306}
   m_Layer: 5
   m_Name: RespondentPanel
   m_TagString: Untagged
@@ -2400,6 +2401,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1768523302}
   m_CullTransparentMesh: 1
+--- !u!114 &1768523306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768523302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcd2314e9ac23fb41a1ce3f95295730d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GraphGrid
+  personContainer: {fileID: 1246183526}
+  widthPadding: 0.1
+  heightPadding: 0.1
+  jitterAmount: 15
 --- !u!1 &1831920317
 GameObject:
   m_ObjectHideFlags: 0
@@ -2566,6 +2583,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 66c50835a000c60459bff1c4fbf68904, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationManager
+  graphGrid: {fileID: 1768523306}
+  xAxis: 0
+  yAxis: 2
   dataReader: {fileID: 417024558}
   policies:
   - {fileID: 11400000, guid: 7931d30b49f2b9e4e8628493b1a2e3ee, type: 2}

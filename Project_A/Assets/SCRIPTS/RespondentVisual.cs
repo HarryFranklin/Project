@@ -10,26 +10,19 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     [Header("References")]
     public Image faceImage;
     private RectTransform rect;
-    private Transform parent;
     private SimulationManager _manager;
-    [SerializeField] private WelfareMetrics welfareMetrics;
 
-    // Animation Settings
-    private float moveSpeed = 5.0f; // Higher = Faster movement
+    // Animation
     private Vector2 _targetPosition;
+    private float moveSpeed = 5.0f;
     private bool _isInitialised = false;
 
     // Link the visual "dot" to the data itself and connect the manager to it
     public void Initialise(Respondent respondent, SimulationManager manager)
     {
         data = respondent;
-        rect = GetComponent<RectTransform>();
-        parent = transform.parent;
         _manager = manager;
-
-        // Initial setup: Snap to position immediately so they don't fly in from (0,0)
-        _targetPosition = CalculatePosition(data.currentLS, 0); // Start at 0 utility visual
-        rect.anchoredPosition = _targetPosition;
+        rect = GetComponent<RectTransform>();
         _isInitialised = true;
     }
 
@@ -37,83 +30,34 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     {
         if (_isInitialised)
         {
-            // Smoothly move from current position -> target position
+            // Smoothly lerp to target
             rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, _targetPosition, Time.deltaTime * moveSpeed);
         }
     }
 
-    // Changing axes
-    // x = still LS[i]
-    // newY = EvaluateDist for that person
-
-    // Calculate and update the X, Y and face of each person
-    // X - based on wealth/LS (L -> R = Poor -> Rich) w/ random jitter
-    // Y - u_Self (personal utility)
-    // Face - Happy, sad or neutral - or dead
-    public void UpdateVisuals(int currentLS, float normalisedSelfUtility, Sprite face)
+    public void UpdateVisuals(Vector2 newPosition, Sprite newFace)
     {
-        if (faceImage) // if not null
+        _targetPosition = newPosition;
+
+        if (faceImage)
         {
-            faceImage.sprite = face;
-            faceImage.color = Color.white; // Just to check
+            faceImage.sprite = newFace;
         }
 
-        if (parent)
+        if (rect.anchoredPosition == Vector2.zero)
         {
-            _targetPosition = CalculatePosition(currentLS, normalisedSelfUtility);
+            rect.anchoredPosition = newPosition;
         }
     }
 
-    // --- HELPER FUNCTIONS ---
-    // X,Y Maths Helper
-    private Vector2 CalculatePosition(int lsScore, float uSelf)
-    {  
-        // Grab data of the container the faces go in
-        RectTransform parentRect = parent.GetComponent<RectTransform>();
-        float w = parentRect.rect.width;
-        float h = parentRect.rect.height;
-
-        // Case: Death (-1)
-        if (lsScore == -1)
-        {
-            // Drop to the absolute bottom margin
-            // Spread randomly across X so they don't stack on one pixel
-            float jitterDeath = (data.id % 20) * (w / 20.0f) - (w / 2.0f); // ?
-            
-            // Position: X = Random, Y = Bottom edge + padding
-            return new Vector2(jitterDeath, -(h * 0.5f) + 15f); 
-        }
-
-        // Case: Alive (2-10)
-        float normalisedLS = lsScore / 10.0f; 
-        
-        float jitter = (data.id % 10) * 4.0f; 
-        float xPos = ((normalisedLS * (w * 0.8f)) - (w * 0.4f)) + jitter;
-
-        // float yPos = (uSelf * h) - (h * 0.5f);
-
-        // New yPos = that person's EvalDist()
-        float newY = welfareMetrics.EvaluateDistribution(normalisedLS, data.societalUtilities);
-
-        return new Vector2(xPos, newY);
-    }
-
-    // Called when Mouse Enters the face
+    // --- POINTER METHODS ---
     public void OnPointerEnter(PointerEventData eventData)
     {
-        // Debug.Log("Mouse detected.");
-        if (_manager != null)
-        {
-            _manager.OnHoverEnter(data);
-        }
+        if (_manager) _manager.OnHoverEnter(data);
     }
 
-    // Called when Mouse Leaves the face
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (_manager != null) 
-        {
-            _manager.OnHoverExit();
-        }
+        if (_manager) _manager.OnHoverExit();
     }
 }

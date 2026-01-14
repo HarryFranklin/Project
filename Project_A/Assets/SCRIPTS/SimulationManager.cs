@@ -2,8 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
+// What can we plot?
+public enum AxisVariable
+{
+    LifeSatisfaction, // 0-10
+    PersonalUtility, // 0-1 (uSelf)
+    SocietalFairness, // 0-1 (uOthers) (evaldist())
+    Wealth // 0-10 (For later, or not?)
+}
+
 public class SimulationManager : MonoBehaviour
 {
+    [Header("Plotting Configuration")]
+    public GraphGrid graphGrid; // Panel object
+    public AxisVariable xAxis = AxisVariable.LifeSatisfaction; // Default
+    public AxisVariable yAxis = AxisVariable.SocietalFairness; // Default
+
     [Header("Data")]
     public DataReader dataReader; 
     public List<Policy> policies; 
@@ -171,7 +185,7 @@ public class SimulationManager : MonoBehaviour
             int currentLS = _currentPopulationLS[i];
             int baselineLS = _baselineLS[i];
 
-            // A. Calculate metrics
+            // 1. Calculate metrics
             
             // Given current LS...
             float uSelfCurrent = WelfareMetrics.GetUtilityForPerson(currentLS, r.personalUtilities);
@@ -180,24 +194,44 @@ public class SimulationManager : MonoBehaviour
             float uSelfBase = WelfareMetrics.GetUtilityForPerson(baselineLS, r.personalUtilities);
             float uSocietyBase = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
 
-            // B. Add to totals
+            // 2. Add to totals
+            
             totalBaseSocial += uSocietyBase;
             totalCurrSocial += uSocietyCurrent;
             totalBasePersonal += uSelfBase;
             totalCurrPersonal += uSelfCurrent;
 
-            // C. Visual logic (Happy/Sad)
+            // 3. Determine facial expression and count it
+
             // Logic extracted to helper method below to keep this loop clean
             Sprite face = DetermineFaceExpression(r, currentLS, uSelfCurrent, uSocietyBase, uSocietyCurrent);
 
             // Use the face to gather whether they're happy rather than doing another calculation
             if (face == faceHappy) happyCount++;
 
-            // D. Trigger visuals
-            respondentList[i].UpdateVisuals(currentLS, uSelfCurrent, face);
+            // 4. Calculate plot coordinates
+            Vector2 plotPos;
+
+            if (currentLS == -1) // Dead - for later
+            {
+                plotPos = graphGrid.GetGraveyardPosition(r.id);
+            }
+            else
+            {
+                // Fix the scales by translating/normalising it all onto a 0-1 scale
+                // what proportion of the way along the scale are the values we are using
+                float normX = GetNormalisedValue(r, currentLS, uSelfBase, uSocietyCurrent, xAxis);
+                float normY = GetNormalisedValue(r, currentLS, uSelfBase, uSocietyCurrent, yAxis);
+
+                // Calc the grid position for this point
+                plotPos = graphGrid.GetPlotPosition(normX, normY, r.id);
+            }
+
+            // 5. Trigger visuals
+            respondentList[i].UpdateVisuals(plotPos, face);
          }
          
-         // E. Update the comparison panel
+         // 6. Update the comparison panel
          string pName = _activePolicy != null ? _activePolicy.policyName : "Default"; // Safety check for policy name, "default" if null
          UpdateScoreUI(pName, totalBaseSocial, totalCurrSocial, totalBasePersonal, totalCurrPersonal, happyCount, population.Length);
     }
@@ -244,6 +278,27 @@ public class SimulationManager : MonoBehaviour
         }
         
         return faceNeutral;
+    }
+
+    // Helper method to select the right data based on the axisvariable type and normalises it right
+    float GetNormalisedValue(Respondent r, int ls, float uSelf, float uOthers, AxisVariable type)
+    {
+        if (type == AxisVariable.LifeSatisfaction)
+        {
+            return ls / 10.0f; // Map 0-10 to 0.0-1.0
+        }
+        else if (type == AxisVariable.PersonalUtility)
+        {
+            return uSelf; // already 0-1
+        }
+        else if (type == AxisVariable.SocietalFairness)
+        {
+            return uOthers; // already 0-1, calculated from EvaluateDistribution
+        }
+        else
+        {
+            return 0.5f; // fallback
+        }
     }
 
     // --- CHOICE HELPERS ---
