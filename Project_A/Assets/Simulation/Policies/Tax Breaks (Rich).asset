@@ -17,6 +17,6 @@ MonoBehaviour:
     by reducing public funding.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 2
-  changeForMiddle: -1
-  changeForPoor: -1
+  changeForRich: 1.5
+  changeForMiddle: -0.5
+  changeForPoor: -1.2

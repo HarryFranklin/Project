@@ -17,6 +17,6 @@ MonoBehaviour:
     on welfare and public services.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0
-  changeForMiddle: -1
-  changeForPoor: -2
+  changeForRich: 0.2
+  changeForMiddle: -0.8
+  changeForPoor: -2.2

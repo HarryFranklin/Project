@@ -17,6 +17,6 @@ MonoBehaviour:
     but improves health security for all.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -1
-  changeForMiddle: 1.5
-  changeForPoor: 1
+  changeForRich: -0.8
+  changeForMiddle: 1.2
+  changeForPoor: 1.2

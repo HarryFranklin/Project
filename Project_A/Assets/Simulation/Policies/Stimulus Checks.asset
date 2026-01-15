@@ -17,6 +17,6 @@ MonoBehaviour:
     during a recession.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0
-  changeForMiddle: 1
-  changeForPoor: 1
+  changeForRich: 0.1
+  changeForMiddle: 0.5
+  changeForPoor: 0.8

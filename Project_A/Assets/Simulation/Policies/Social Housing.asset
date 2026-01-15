@@ -17,6 +17,6 @@ MonoBehaviour:
     for low earners.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0
+  changeForRich: -0.1
   changeForMiddle: 0
-  changeForPoor: 2
+  changeForPoor: 1.8

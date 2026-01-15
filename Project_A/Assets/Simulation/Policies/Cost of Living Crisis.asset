@@ -17,6 +17,6 @@ MonoBehaviour:
     and benefits.
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -1
-  changeForMiddle: -2
-  changeForPoor: -3
+  changeForRich: -0.5
+  changeForMiddle: -1.8
+  changeForPoor: -2.8
