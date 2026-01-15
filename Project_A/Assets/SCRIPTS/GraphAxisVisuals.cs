@@ -33,7 +33,7 @@ public class GraphAxisVisuals : MonoBehaviour
     }
 
     // Called by SimulationManager
-    public void UpdateAxesVisuals(AxisVariable xType, AxisVariable yType)
+    public void UpdateAxisVisuals(AxisVariable xType, AxisVariable yType)
     {
         // 1. Get the ranges based on the axes enum in GraphGrid
         AxisRange xRange = GetRange(xType);

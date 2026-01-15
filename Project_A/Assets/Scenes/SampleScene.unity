@@ -3296,8 +3296,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GraphGrid
   personContainer: {fileID: 1246183526}
-  widthPadding: 0.1
-  heightPadding: 0.1
+  widthPadding: 0
+  heightPadding: 0
   jitterAmount: 15
 --- !u!114 &1768523307
 MonoBehaviour:
@@ -3457,6 +3457,58 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1831920317}
   m_CullTransparentMesh: 1
+--- !u!1 &1861122959
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1861122961}
+  - component: {fileID: 1861122960}
+  m_Layer: 0
+  m_Name: VisualisationManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1861122960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1861122959}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09989d7d0c51fc243a90301f8f73b2d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VisualisationManager
+  personContainer: {fileID: 1246183526}
+  personPrefab: {fileID: 3890215646749294278, guid: c4cfe97abd233114999cc6ff8f461c19, type: 3}
+  graphGrid: {fileID: 1768523306}
+  graphAxes: {fileID: 1768523307}
+  faceHappy: {fileID: 674305466, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
+  faceNeutral: {fileID: -2030909350, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
+  faceSad: {fileID: 2095936593, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
+  faceDead: {fileID: 21300000, guid: 1b307972a226d694697c2d79b77a29d7, type: 3}
+--- !u!4 &1861122961
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1861122959}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1862640733
 GameObject:
   m_ObjectHideFlags: 0
@@ -3486,11 +3538,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 66c50835a000c60459bff1c4fbf68904, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationManager
-  graphGrid: {fileID: 1768523306}
-  graphAxes: {fileID: 0}
+  visuals: {fileID: 1861122960}
+  dataReader: {fileID: 417024558}
   xAxis: 0
   yAxis: 2
-  dataReader: {fileID: 417024558}
   policies:
   - {fileID: 11400000, guid: 7931d30b49f2b9e4e8628493b1a2e3ee, type: 2}
   - {fileID: 11400000, guid: 58b1da14cfa40da4095a2f7598fb98a2, type: 2}
@@ -3502,6 +3553,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9dc3e0cabccec9a4a805325f6f1cd489, type: 2}
   - {fileID: 11400000, guid: 60db6b7e9eb84474998bdf4285acfc6c, type: 2}
   - {fileID: 11400000, guid: ef50123f5ca541049a6bbfa6beae0fb7, type: 2}
+  policyOptionA: {fileID: 11400000, guid: a46dfbafb59836244b290fc1d7910d2d, type: 2}
+  policyOptionB: {fileID: 11400000, guid: a062b17eb9dec324db56e40117ef801d, type: 2}
   policyInfoPanel: {fileID: 28349564}
   comparisonPanel: {fileID: 698477936}
   policyTitleText: {fileID: 844979402}
@@ -3509,14 +3562,6 @@ MonoBehaviour:
   policyStatsText: {fileID: 699122555}
   comparisonSubtitleText: {fileID: 201786671}
   comparisonBodyText: {fileID: 2103049792}
-  policyOptionA: {fileID: 11400000, guid: a46dfbafb59836244b290fc1d7910d2d, type: 2}
-  policyOptionB: {fileID: 11400000, guid: a062b17eb9dec324db56e40117ef801d, type: 2}
-  container: {fileID: 1246183526}
-  personPrefab: {fileID: 3890215646749294278, guid: c4cfe97abd233114999cc6ff8f461c19, type: 3}
-  faceHappy: {fileID: 674305466, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
-  faceNeutral: {fileID: -2030909350, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
-  faceSad: {fileID: 2095936593, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
-  faceDead: {fileID: 21300000, guid: 1b307972a226d694697c2d79b77a29d7, type: 3}
 --- !u!4 &1862640735
 Transform:
   m_ObjectHideFlags: 0
@@ -4162,5 +4207,6 @@ SceneRoots:
   - {fileID: 330585546}
   - {fileID: 528983022}
   - {fileID: 1928273416}
-  - {fileID: 1862640735}
   - {fileID: 417024559}
+  - {fileID: 1862640735}
+  - {fileID: 1861122961}
