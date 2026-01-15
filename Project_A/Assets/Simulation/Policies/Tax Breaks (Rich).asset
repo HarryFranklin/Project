@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Tax Breaks (Rich)
   description: Reducing the top rate of tax to encourage investment. Often paid for
     by reducing public funding.
+  baseChangeRich: 1.8
+  baseChangeMiddle: -0.2
+  baseChangePoor: -0.5
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 1.5
-  changeForMiddle: -0.5
-  changeForPoor: -1.2
+  specificRules:
+  - note: 'Rule 1: Trickle Down (Rare)'
+    minLS: 5
+    maxLS: 7
+    affectEveryone: 0
+    proportion: 0.1
+    impact: 1

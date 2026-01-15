@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Tech Boom
   description: (Scenario) A surge in the tech sector boosts middle-class wages but
     increases gentrification.
+  baseChangeRich: 1
+  baseChangeMiddle: 0.5
+  baseChangePoor: -0.5
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 1.2
-  changeForMiddle: 1.5
-  changeForPoor: -1.5
+  specificRules:
+  - note: 'Rule 1:  '
+    minLS: 5
+    maxLS: 8
+    affectEveryone: 0
+    proportion: 0.2
+    impact: 3

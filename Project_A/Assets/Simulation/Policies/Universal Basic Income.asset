@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Universal Basic Income
   description: A guaranteed monthly payment for every citizen, funded by higher taxes
     on high earners.
+  baseChangeRich: -1.5
+  baseChangeMiddle: 0.5
+  baseChangePoor: 2
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -1.2
-  changeForMiddle: 0.8
-  changeForPoor: 2.5
+  specificRules:
+  - note: 'Rule 1: Safety Net'
+    minLS: 0
+    maxLS: 2
+    affectEveryone: 1
+    proportion: 0
+    impact: 1.5

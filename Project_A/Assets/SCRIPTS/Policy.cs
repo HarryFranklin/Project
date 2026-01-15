@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewPolicy", menuName = "Simulation/Policy")]
@@ -6,26 +7,50 @@ public class Policy : ScriptableObject
     public string policyName;
     [TextArea] public string description;
 
-    [Header("Thresholds")]
-    [Tooltip("Anyone with this Life Satisfaction (LS) or HIGHER is considered 'Rich'")]
-    public float richThreshold = 8; 
+    // 1. Broad Impact 
+    [Header("1. Broad Base Impact")]
+    [Tooltip("This applies to everyone based on their wealth tier, before the specific rules below.")]
+    public float baseChangeRich = 0f;
+    public float baseChangeMiddle = 0f;
+    public float baseChangePoor = 0f;
 
-    [Tooltip("Anyone with this LS or LOWER is considered 'Poor'")]
-    public float poorThreshold = 4;
+    [Space(10)]
+    [Header("Wealth Thresholds")]
+    public float richThreshold = 8f;
+    public float poorThreshold = 4f;
 
-    [Header("Impact Values")]
-    [Tooltip("Change applied to the Rich")]
-    public float changeForRich = 0;
+    // 2. Specific Targeting/Allocation Rules
 
-    [Tooltip("Change applied to the Middle (everyone else)")]
-    public float changeForMiddle = 0;
+    [System.Serializable]
+    public struct TargetedRule
+    {
+        public string note; // e.g. "Help the desperate"
+        
+        [Header("Who?")]
+        [Tooltip("Minimum Life Satisfaction to qualify")]
+        public float minLS; 
+        [Tooltip("Maximum Life Satisfaction to qualify")]
+        public float maxLS;
 
-    [Tooltip("Change applied to the Poor")]
-    public float changeForPoor = 0;
+        [Header("How Many?")]
+        [Tooltip("If true, ignores the percentage and hits 100% of people in this bracket.")]
+        public bool affectEveryone; 
+        
+        [Range(0f, 1f)]
+        [Tooltip("0.5 = 50% of people in this bracket will get the effect.")]
+        public float proportion; 
 
+        [Header("What Effect?")]
+        public float impact; 
+    }
 
-    // FUNCTION: f(LSarray) -> LSarray
-    // Take the current LS data and change it based on this policy's parameters
+    [Header("2. Targeted Rules")]
+    [Tooltip("Add specifics here (e.g. '50% of people with LS=2 get +4')")]
+    public List<TargetedRule> specificRules;
+
+    // --- LOGIC ---
+
+    // f(LS[]) -> newLS
     public float[] ApplyPolicy(Respondent[] population)
     {
         float[] newLS = new float[population.Length];
@@ -33,23 +58,42 @@ public class Policy : ScriptableObject
         for (int i = 0; i < population.Length; i++)
         {
             float current = population[i].currentLS;
-            float delta = 0;
+            float totalDelta = 0f;
 
-            if (current >= richThreshold)
+            // 1. Apply Base Impact (Rich/Middle/Poor)
+            if (current >= richThreshold) totalDelta += baseChangeRich;
+            else if (current <= poorThreshold) totalDelta += baseChangePoor;
+            else totalDelta += baseChangeMiddle;
+
+            // 2. Process Targeted Rules
+            foreach (var rule in specificRules)
             {
-                delta = changeForRich;
-            }
-            else if (current <= poorThreshold)
-            {
-                delta = changeForPoor;
-            }
-            else
-            {
-                delta = changeForMiddle;
+                // A. Is this person in the target range?
+                if (current >= rule.minLS && current <= rule.maxLS)
+                {
+                    // B. Do they get selected?
+                    bool isSelected = false;
+                    
+                    if (rule.affectEveryone)
+                    {
+                        isSelected = true;
+                    }
+                    else
+                    {
+                        // Roll the dice (0.0 to 1.0)
+                        if (Random.value <= rule.proportion) isSelected = true;
+                    }
+
+                    // C. Apply Impact
+                    if (isSelected)
+                    {
+                        totalDelta += rule.impact;
+                    }
+                }
             }
 
-            // Clamp ensures we stay within the 0-10 scale
-            newLS[i] = Mathf.Clamp(current + delta, 0, 10);
+            // 3. Final Calculation & Clamp
+            newLS[i] = Mathf.Clamp(current + totalDelta, 0f, 10f);
         }
 
         return newLS;

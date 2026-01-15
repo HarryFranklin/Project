@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Stimulus Checks
   description: A one-off cash payment to every household to stimulate the economy
     during a recession.
+  baseChangeRich: 0
+  baseChangeMiddle: 0.5
+  baseChangePoor: 1
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0.1
-  changeForMiddle: 0.5
-  changeForPoor: 0.8
+  specificRules:
+  - note: 'Rule 1: Immediate Relief'
+    minLS: 0
+    maxLS: 3
+    affectEveryone: 1
+    proportion: 0
+    impact: 0.5

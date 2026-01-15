@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Austerity
   description: Cuts to public spending to reduce national debt. Puts heavy pressure
     on welfare and public services.
+  baseChangeRich: 0.5
+  baseChangeMiddle: -1
+  baseChangePoor: -1.5
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: 0.2
-  changeForMiddle: -0.8
-  changeForPoor: -2.2
+  specificRules:
+  - note: 'Rule 1: Benefit Sanctions'
+    minLS: 0
+    maxLS: 3
+    affectEveryone: 0
+    proportion: 0.25
+    impact: -3

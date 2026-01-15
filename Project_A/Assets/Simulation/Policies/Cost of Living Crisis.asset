@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Cost of Living Crisis
   description: (Scenario) Inflation Spirals, reducing the real-terms value of wages
     and benefits.
+  baseChangeRich: -0.2
+  baseChangeMiddle: -1.5
+  baseChangePoor: -2
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -0.5
-  changeForMiddle: -1.8
-  changeForPoor: -2.8
+  specificRules:
+  - note: 'Rule 1: Energy Bill Shock'
+    minLS: 2
+    maxLS: 5
+    affectEveryone: 0
+    proportion: 0.5
+    impact: -2

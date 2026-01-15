@@ -10,26 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Fund the NHS
+  m_Name: VAT (20%)
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Fund the NHS
-  description: Massive investment in healthcare. Increases taxes for the wealthy
-    but improves health security for all.
-  baseChangeRich: -1
+  policyName: VAT (20%)
+  description: It hurts everyone, but hurts the poor disproportionately because they
+    spend a higher percentage of their income on essentials.
+  baseChangeRich: -0.2
   baseChangeMiddle: -0.5
-  baseChangePoor: 0
+  baseChangePoor: -1
   richThreshold: 8
   poorThreshold: 4
   specificRules:
-  - note: 'Rule 1: Life Saving Treatment'
+  - note: 'Rule 1: Deep Poverty Trap'
     minLS: 0
-    maxLS: 4
+    maxLS: 2.5
     affectEveryone: 0
-    proportion: 0.3
-    impact: 4
-  - note: 'Rule 2: Better Care'
-    minLS: 4.1
-    maxLS: 7
-    affectEveryone: 0
-    proportion: 0.3
-    impact: 2
+    proportion: 0.39999998
+    impact: -1.5

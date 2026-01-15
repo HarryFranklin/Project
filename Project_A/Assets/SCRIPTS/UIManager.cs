@@ -112,9 +112,9 @@ public class UIManager : MonoBehaviour
             }
 
             string stats = "";
-            stats += $"<b>Rich:</b> {FormatChange(p.changeForRich)}\n";
-            stats += $"<b>Middle:</b> {FormatChange(p.changeForMiddle)}\n";
-            stats += $"<b>Poor:</b> {FormatChange(p.changeForPoor)}";
+            stats += $"<b>Rich:</b> {FormatChange(p.baseChangeRich)}\n";
+            stats += $"<b>Middle:</b> {FormatChange(p.baseChangeMiddle)}\n";
+            stats += $"<b>Poor:</b> {FormatChange(p.baseChangePoor)}";
             
             if (policyStatsText) policyStatsText.text = stats;
         }

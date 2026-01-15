@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Social Housing
   description: Building 100,000 affordable homes. Directly targets the housing crisis
     for low earners.
+  baseChangeRich: 0
+  baseChangeMiddle: 0
+  baseChangePoor: 0
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -0.1
-  changeForMiddle: 0
-  changeForPoor: 1.8
+  specificRules:
+  - note: 'Rule 1: Housing Lottery'
+    minLS: 0
+    maxLS: 4
+    affectEveryone: 0
+    proportion: 0.1
+    impact: 4

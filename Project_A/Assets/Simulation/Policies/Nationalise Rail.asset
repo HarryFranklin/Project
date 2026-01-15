@@ -15,8 +15,15 @@ MonoBehaviour:
   policyName: Nationalise Rail
   description: Bringing railways into public ownership. Improves commuting for workers
     but has little impact on the very poor/rich.
+  baseChangeRich: -0.1
+  baseChangeMiddle: 0.5
+  baseChangePoor: 0
   richThreshold: 8
   poorThreshold: 4
-  changeForRich: -0.2
-  changeForMiddle: 0.5
-  changeForPoor: 0.25
+  specificRules:
+  - note: 'Rule 1: Commuter Belt'
+    minLS: 4
+    maxLS: 7
+    affectEveryone: 0
+    proportion: 0.4
+    impact: 0.8

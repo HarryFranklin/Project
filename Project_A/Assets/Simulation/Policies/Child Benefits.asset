@@ -10,26 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
-  m_Name: Fund the NHS
+  m_Name: Child Benefits
   m_EditorClassIdentifier: Assembly-CSharp::Policy
-  policyName: Fund the NHS
-  description: Massive investment in healthcare. Increases taxes for the wealthy
-    but improves health security for all.
-  baseChangeRich: -1
-  baseChangeMiddle: -0.5
+  policyName: Child Benefits
+  description: A payment to parents. Not everyone is a parent, so we use probability
+    to simulate family status.
+  baseChangeRich: 0
+  baseChangeMiddle: 0
   baseChangePoor: 0
   richThreshold: 8
   poorThreshold: 4
   specificRules:
-  - note: 'Rule 1: Life Saving Treatment'
+  - note: 'Rule 1: Low Income Families'
     minLS: 0
-    maxLS: 4
+    maxLS: 5
     affectEveryone: 0
-    proportion: 0.3
-    impact: 4
-  - note: 'Rule 2: Better Care'
-    minLS: 4.1
-    maxLS: 7
-    affectEveryone: 0
-    proportion: 0.3
+    proportion: 0.35
     impact: 2
+  - note: 'Rule 2: Middle Income Families'
+    minLS: 5.1
+    maxLS: 8
+    affectEveryone: 0
+    proportion: 0.4
+    impact: 0.8
+  - note: 'Rule 3: High Income Parents'
+    minLS: 8.1
+    maxLS: 10
+    affectEveryone: 0
+    proportion: 0.3
+    impact: 0
