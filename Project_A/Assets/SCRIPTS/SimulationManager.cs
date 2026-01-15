@@ -6,6 +6,7 @@ public class SimulationManager : MonoBehaviour
 {
     [Header("Architecture")]
     public VisualisationManager visuals;
+    public UIManager uiManager;
     public DataReader dataReader;
 
     [Header("Plotting Settings")]
@@ -92,7 +93,11 @@ public class SimulationManager : MonoBehaviour
         _policyIndex = -1;
         _activePolicy = null;
         
-        // Reset current LS back to baseline
+        // 1. Reset Axes to desired defaults
+        xAxis = AxisVariable.LifeSatisfaction;
+        yAxis = AxisVariable.SocietalUtility;
+
+        // 2. Reset Population Data
         System.Array.Copy(_baselineLS, _currentLS, _baselineLS.Length);
         
         UpdateSimulation();
@@ -136,76 +141,79 @@ public class SimulationManager : MonoBehaviour
     // Calculates aggregates (Approval, Averages) for the UI panels
     void CalculateAndRefreshUI()
     {
-        double totalBaseSocial = 0;
+        if (!uiManager) return;
+
+        int count = _populationList.Count; 
+        
+        // Initialise totals
+        double totalBaseSocial = 0; 
         double totalCurrSocial = 0;
-        double totalBasePersonal = 0;
+        double totalBasePersonal = 0; 
         double totalCurrPersonal = 0;
         int happyCount = 0;
-        int populationSize = _populationList.Count;
 
-        for (int i = 0; i < populationSize; i++)
+        // Loop
+        for (int i = 0; i < count; i++)
         {
             Respondent r = _populationList[i];
             int cLS = _currentLS[i];
             int bLS = _baselineLS[i];
 
-            // Calculate Metrics
+            // Metrics
             float uSelfCurr = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
             float uSelfBase = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
-            float uSocCurr  = WelfareMetrics.EvaluateDistribution(_currentLS, r.societalUtilities);
-            float uSocBase  = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
+            float uSocCurr = WelfareMetrics.EvaluateDistribution(_currentLS, r.societalUtilities);
+            float uSocBase = WelfareMetrics.EvaluateDistribution(_baselineLS, r.societalUtilities);
 
-            // Add to Totals
-            totalBaseSocial += uSocBase;
+            totalBaseSocial += uSocBase; 
             totalCurrSocial += uSocCurr;
-            totalBasePersonal += uSelfBase;
+            totalBasePersonal += uSelfBase; 
             totalCurrPersonal += uSelfCurr;
 
-            // Check Happiness (For Approval Rating)
+            // Happiness Logic
             bool isHappy = false;
-            if (cLS == -1) 
+            if (cLS != -1)
             {
-                isHappy = false; // Dead people don't vote
-            }
-            else if (_activePolicy == null) // Status Quo
-            {
-                // Simple Absolute Happiness
-                if (cLS >= 8) isHappy = true;
-                else if (cLS > 3) 
-                {
-                    // Relative Happiness
-                    float gap = uSelfCurr - uSocBase;
-                    if (gap > 0.05f) isHappy = true;
-                }
-            }
-            else // Comparison
-            {
-                // Improvement Happiness
+                // Simple check: Is society fairer now than before?
                 if (uSocCurr > uSocBase + 0.01f) isHappy = true;
             }
-
             if (isHappy) happyCount++;
         }
 
-        // Send to UI
+        // Send to the UI
         if (_activePolicy == null)
         {
-            UpdateUI_DefaultText();
-            UpdateScoreUI_DefaultText();
+            // Default State
+            uiManager.UpdatePolicyInfo(null);
+            uiManager.UpdateComparisonInfo(
+                "Default", 
+                totalBaseSocial, totalCurrSocial, 
+                totalBasePersonal, totalCurrPersonal, 
+                happyCount, count
+            );
         }
         else
         {
-            UpdateUI_PolicyText(_activePolicy);
-            UpdateScoreUI_Comparison(
+            // Policy State
+            uiManager.UpdatePolicyInfo(_activePolicy);
+            uiManager.UpdateComparisonInfo(
                 _activePolicy.policyName, 
                 totalBaseSocial, totalCurrSocial, 
                 totalBasePersonal, totalCurrPersonal, 
-                happyCount, populationSize
+                happyCount, count
             );
         }
     }
 
     // --- UI HELPERS ---
+
+    // Called by UIManager when the dropdowns change
+    public void SetAxisVariables(AxisVariable x, AxisVariable y)
+    {
+        xAxis = x;
+        yAxis = y;
+        UpdateSimulation(); // Refresh graph immediately
+    }
 
     public void ShowPolicyInfoTab()
     {
