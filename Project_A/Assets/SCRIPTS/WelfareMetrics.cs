@@ -62,13 +62,12 @@ public class WelfareMetrics
 
     // --- UTILITY FUNCTIONS ---
     // f:(LS) -> U 
-    // i.e. what is the utility of someone at LS=5?
-    public static float GetUtilityForPerson(int lsScore, float[] curve)
+    public static float GetUtilityForPerson(float lsScore, float[] curve)
     {
         // Case A: Death
-        if (lsScore == -1) 
+        if (lsScore <= -0.9f) 
         {
-            return curve[0]; // 0th curve state is state F, death
+            return curve[0]; // State F = death
         }
 
         // Case B: Alive (2-10)
@@ -99,7 +98,7 @@ public class WelfareMetrics
 
     // f: (LS_Array, UtilCurve) -> AvgUtility
     // Calculate U_others - take everyone's LS scores and that person's uOthers curve and calculate the average utility each person would get in this scenario
-    public static float EvaluateDistribution(int[] populationLS, float[] respondentUOthersCurve)
+    public static float EvaluateDistribution(float[] populationLS, float[] respondentUOthersCurve)
     {
         double totalUtility = 0;
 

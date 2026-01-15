@@ -8,32 +8,32 @@ public class Policy : ScriptableObject
 
     [Header("Thresholds")]
     [Tooltip("Anyone with this Life Satisfaction (LS) or HIGHER is considered 'Rich'")]
-    public int richThreshold = 8; 
+    public float richThreshold = 8; 
 
     [Tooltip("Anyone with this LS or LOWER is considered 'Poor'")]
-    public int poorThreshold = 4;
+    public float poorThreshold = 4;
 
     [Header("Impact Values")]
     [Tooltip("Change applied to the Rich")]
-    public int changeForRich = 0;
+    public float changeForRich = 0;
 
     [Tooltip("Change applied to the Middle (everyone else)")]
-    public int changeForMiddle = 0;
+    public float changeForMiddle = 0;
 
     [Tooltip("Change applied to the Poor")]
-    public int changeForPoor = 0;
+    public float changeForPoor = 0;
 
 
     // FUNCTION: f(LSarray) -> LSarray
     // Take the current LS data and change it based on this policy's parameters
-    public int[] ApplyPolicy(Respondent[] population)
+    public float[] ApplyPolicy(Respondent[] population)
     {
-        int[] newLS = new int[population.Length];
+        float[] newLS = new float[population.Length];
 
         for (int i = 0; i < population.Length; i++)
         {
-            int current = population[i].currentLS;
-            int delta = 0;
+            float current = population[i].currentLS;
+            float delta = 0;
 
             if (current >= richThreshold)
             {

@@ -18,5 +18,5 @@ MonoBehaviour:
   richThreshold: 8
   poorThreshold: 4
   changeForRich: -1
-  changeForMiddle: 1
+  changeForMiddle: 1.5
   changeForPoor: 1

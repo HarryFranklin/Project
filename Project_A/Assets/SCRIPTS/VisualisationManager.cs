@@ -32,7 +32,7 @@ public class VisualisationManager : MonoBehaviour
     }
 
     // 2. Update positions and sprites based on data provided by SimManager
-    public void UpdateDisplay(Respondent[] population, int[] currentLS, int[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis)
+    public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis)
     {
         // Update Axes first
         graphAxes.UpdateAxisVisuals(xAxis, yAxis);
@@ -40,7 +40,7 @@ public class VisualisationManager : MonoBehaviour
         for (int i = 0; i < population.Length; i++)
         {
             Respondent r = population[i];
-            int ls = currentLS[i];
+            float ls = currentLS[i];
             
             // 1. Calculate Data for Plotting (Using Helper)
             float uSelf = WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities);
@@ -52,7 +52,7 @@ public class VisualisationManager : MonoBehaviour
 
             // 3. Determine Position (Graph Logic)
             Vector2 position;
-            if (ls == -1)
+            if (ls <= -0.9f) // Death Check
             {
                 position = graphGrid.GetGraveyardPosition(r.id);
             }
@@ -69,7 +69,7 @@ public class VisualisationManager : MonoBehaviour
     }
 
     // Visual Helpers
-    private float GetNormalisedValue(int ls, float uSelf, float uSoc, AxisVariable type)
+    private float GetNormalisedValue(float ls, float uSelf, float uSoc, AxisVariable type)
     {
         float val = 0;
         switch(type) {
@@ -81,22 +81,29 @@ public class VisualisationManager : MonoBehaviour
         return Mathf.InverseLerp(range.min, range.max, val);
     }
 
-    private Sprite DetermineFace(Respondent r, int ls, float uSelf, int[] baseLS, int[] currLS, Policy policy)
+    private Sprite DetermineFace(Respondent r, float ls, float uSelf, float[] baseLS, float[] currLS, Policy policy)
     {
-        if (ls == -1) return faceDead;
+        // 1. Death Check (Float safety)
+        if (ls <= -0.9f) return faceDead;
 
         float uSocBase = WelfareMetrics.EvaluateDistribution(baseLS, r.societalUtilities);
         float uSocCurr = WelfareMetrics.EvaluateDistribution(currLS, r.societalUtilities);
 
         if (policy == null) // Status Quo
         {
-            if (ls >= 8) return faceHappy;
-            if (ls <= 3) return faceSad;
+            // Absolute Happiness (Thresholds are now floats)
+            if (ls >= 8.0f) return faceHappy;
+            if (ls <= 3.0f) return faceSad;
+
+            // Relative Happiness (Gap between Self and Society)
             float gap = uSelf - uSocBase;
-            return (gap > 0.05f) ? faceHappy : (gap < -0.05f ? faceSad : faceNeutral);
+            if (gap > 0.05f) return faceHappy; 
+            if (gap < -0.05f) return faceSad; 
+            return faceNeutral;
         }
-        else // Comparison
+        else // Comparison Mode
         {
+            // Has society improved?
             if (uSocCurr > uSocBase + 0.01f) return faceHappy;
             if (uSocCurr < uSocBase - 0.01f) return faceSad;
             return faceNeutral;
