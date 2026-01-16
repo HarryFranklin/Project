@@ -10,7 +10,7 @@ public class SimulationManager : MonoBehaviour
 
     [Header("Plotting Settings")]
     public AxisVariable xAxis = AxisVariable.LifeSatisfaction;
-    public AxisVariable yAxis = AxisVariable.SocietalUtility;
+    public AxisVariable yAxis = AxisVariable.SocietalFairness;
 
     [Header("Policy Data")]
     public List<Policy> policies;
@@ -69,7 +69,7 @@ public class SimulationManager : MonoBehaviour
         _activePolicy = null;
         
         xAxis = AxisVariable.LifeSatisfaction;
-        yAxis = AxisVariable.SocietalUtility;
+        yAxis = AxisVariable.SocietalFairness;
 
         System.Array.Copy(_baselineLS, _currentLS, _baselineLS.Length);
         

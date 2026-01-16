@@ -75,7 +75,7 @@ public class VisualisationManager : MonoBehaviour
         switch(type) {
             case AxisVariable.LifeSatisfaction: val = ls; break;
             case AxisVariable.PersonalUtility: val = uSelf; break;
-            case AxisVariable.SocietalUtility: val = uSoc; break;
+            case AxisVariable.SocietalFairness: val = uSoc; break;
         }
         var range = graphAxes.GetRange(type);
         return Mathf.InverseLerp(range.min, range.max, val);

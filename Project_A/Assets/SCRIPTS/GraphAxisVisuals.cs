@@ -78,9 +78,9 @@ public class GraphAxisVisuals : MonoBehaviour
         {
             return new AxisRange(0, 1, "Personal Utility");
         }
-        else if (type == AxisVariable.SocietalUtility)
+        else if (type == AxisVariable.SocietalFairness)
         {
-            return new AxisRange(0, 1, "Societal Utility");
+            return new AxisRange(0, 1, "Societal Fairness");
         }
         
         // Future example: 
