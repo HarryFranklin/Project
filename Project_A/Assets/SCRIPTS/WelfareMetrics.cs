@@ -97,7 +97,7 @@ public class WelfareMetrics
     }
 
     // f: (LS_Array, UtilCurve) -> AvgUtility
-    // Calculate U_others - take everyone's LS scores and that person's uOthers curve and calculate the average utility each person would get in this scenario
+    // How much empathy would I get if I had the LS of the average person in this population?
     public static float EvaluateDistribution(float[] populationLS, float[] respondentUOthersCurve)
     {
         double totalUtility = 0;

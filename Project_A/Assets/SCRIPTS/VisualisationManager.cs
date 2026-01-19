@@ -117,7 +117,7 @@ public class VisualisationManager : MonoBehaviour
 
     // --- HELPER LOGIC ---
 
-    // For Default Mode: Absolute Life Satisfaction (0-10)
+    // Default Mode: Absolute Life Satisfaction (0-10)
     private Sprite GetAbsoluteSprite(float ls)
     {
         // User Logic: Happy >= 6, Sad <= 4
