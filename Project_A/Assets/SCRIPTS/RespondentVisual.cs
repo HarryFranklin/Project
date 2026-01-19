@@ -8,7 +8,9 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     public Respondent data;
 
     [Header("References")]
-    public Image faceImage;
+    public Image leftFaceImage;  
+    public Image rightFaceImage;
+    
     private RectTransform rect;
     private SimulationManager _manager;
 
@@ -35,13 +37,18 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         }
     }
 
-    public void UpdateVisuals(Vector2 newPosition, Sprite newFace)
+    public void UpdateVisuals(Vector2 newPosition, Sprite leftSprite, Sprite rightSprite)
     {
         _targetPosition = newPosition;
 
-        if (faceImage)
+        if (leftFaceImage) 
         {
-            faceImage.sprite = newFace;
+            leftFaceImage.sprite = leftSprite;
+        }
+
+        if (rightFaceImage) 
+        {
+            rightFaceImage.sprite = rightSprite;
         }
 
         if (rect.anchoredPosition == Vector2.zero)

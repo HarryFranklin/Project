@@ -11,6 +11,7 @@ public class SimulationManager : MonoBehaviour
     [Header("Plotting Settings")]
     public AxisVariable xAxis = AxisVariable.LifeSatisfaction;
     public AxisVariable yAxis = AxisVariable.SocietalFairness;
+    public FaceMode faceMode = FaceMode.Split;
 
     [Header("Policy Data")]
     public List<Policy> policies;
@@ -70,6 +71,7 @@ public class SimulationManager : MonoBehaviour
         
         xAxis = AxisVariable.LifeSatisfaction;
         yAxis = AxisVariable.SocietalFairness;
+        faceMode = FaceMode.Split;
 
         System.Array.Copy(_baselineLS, _currentLS, _baselineLS.Length);
         
@@ -99,7 +101,8 @@ public class SimulationManager : MonoBehaviour
                 _baselineLS,
                 _activePolicy,
                 xAxis,
-                yAxis
+                yAxis,
+                faceMode
             );
         }
 
@@ -165,6 +168,12 @@ public class SimulationManager : MonoBehaviour
         UpdateSimulation(); 
     }
 
+    public void SetFaceMode(FaceMode mode)
+    {
+        faceMode = mode;
+        UpdateSimulation();
+    }
+
     // --- HOVER LOGIC ---
     public void OnHoverEnter(Respondent r)
     {
@@ -195,7 +204,7 @@ public class SimulationManager : MonoBehaviour
     {
         if (Application.isPlaying && visuals != null && _populationList != null)
         {
-            visuals.UpdateDisplay(_populationList.ToArray(), _currentLS, _baselineLS, _activePolicy, xAxis, yAxis);
+            visuals.UpdateDisplay(_populationList.ToArray(), _currentLS, _baselineLS, _activePolicy, xAxis, yAxis, faceMode);
         }
     }
 }

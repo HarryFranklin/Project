@@ -45,6 +45,7 @@ public class UIManager : MonoBehaviour
     [Header("Graph Controls")]
     public TMP_Dropdown xAxisDropdown;
     public TMP_Dropdown yAxisDropdown;
+    public TMP_Dropdown faceModeDropdown;
 
     // Determine the entire state of the UI
     private bool _isPolicyTabActive = true; 
@@ -93,9 +94,9 @@ public class UIManager : MonoBehaviour
     void OnResetClicked()
     {
         simulationManager.ResetToDefault();
-        // Sync Dropdowns to match Brain
         if (xAxisDropdown) xAxisDropdown.value = (int)simulationManager.xAxis;
         if (yAxisDropdown) yAxisDropdown.value = (int)simulationManager.yAxis;
+        if (faceModeDropdown) faceModeDropdown.value = (int)simulationManager.faceMode;
     }
 
     // This function enforces the state variables on the Scene.
@@ -256,16 +257,32 @@ public class UIManager : MonoBehaviour
 
     void InitialiseDropdowns()
     {
-        if (!xAxisDropdown || !yAxisDropdown) return;
+        // 1. X Axis
+        if (xAxisDropdown)
+        {
+            xAxisDropdown.ClearOptions();
+            xAxisDropdown.AddOptions(new List<string>(Enum.GetNames(typeof(AxisVariable))));
+            xAxisDropdown.value = (int)simulationManager.xAxis;
+            xAxisDropdown.onValueChanged.AddListener((i) => simulationManager.SetAxisVariables((AxisVariable)i, simulationManager.yAxis));
+        }
 
-        string[] enumNames = Enum.GetNames(typeof(AxisVariable));
-        List<string> options = new List<string>(enumNames);
+        // 2. Y Axis
+        if (yAxisDropdown)
+        {
+            yAxisDropdown.ClearOptions();
+            yAxisDropdown.AddOptions(new List<string>(Enum.GetNames(typeof(AxisVariable))));
+            yAxisDropdown.value = (int)simulationManager.yAxis;
+            yAxisDropdown.onValueChanged.AddListener((i) => simulationManager.SetAxisVariables(simulationManager.xAxis, (AxisVariable)i));
+        }
 
-        xAxisDropdown.ClearOptions(); xAxisDropdown.AddOptions(options); xAxisDropdown.value = (int)simulationManager.xAxis; 
-        yAxisDropdown.ClearOptions(); yAxisDropdown.AddOptions(options); yAxisDropdown.value = (int)simulationManager.yAxis;
-
-        xAxisDropdown.onValueChanged.AddListener(OnXAxisChanged);
-        yAxisDropdown.onValueChanged.AddListener(OnYAxisChanged);
+        // 3. Z Axis (Faces) - NEW
+        if (faceModeDropdown)
+        {
+            faceModeDropdown.ClearOptions();
+            faceModeDropdown.AddOptions(new List<string>(Enum.GetNames(typeof(FaceMode))));
+            faceModeDropdown.value = (int)simulationManager.faceMode;
+            faceModeDropdown.onValueChanged.AddListener((i) => simulationManager.SetFaceMode((FaceMode)i));
+        }
     }
 
     public void OnXAxisChanged(int index) { simulationManager.SetAxisVariables((AxisVariable)index, simulationManager.yAxis); }
