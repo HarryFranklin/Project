@@ -25,6 +25,15 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     [Header("Fading")]
     public CanvasGroup rootCanvasGroup;
 
+    // Optimisation Settings
+    // 0.1f is the sweetspot for pixel snapping - 0.5 is too much as it could snap an object up to the next pixel.
+    // This cuts the infinite tail off of the Lerp
+    private const float SNAP_DISTANCE = 0.1f; 
+    private const float SNAP_SQR = SNAP_DISTANCE * SNAP_DISTANCE; // Pre-calculate for speed
+
+    private bool _isMoving;
+
+    // State
     private SimulationManager _manager;
     private bool _isGhostModeEnabled = false;
     private bool _isHovered = false;
@@ -41,17 +50,58 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
 
     void Update()
     {
-        // Smooth movement for both groups
-        if (faceGroup) faceGroup.anchoredPosition = Vector2.Lerp(faceGroup.anchoredPosition, currentPosition, Time.deltaTime * 5f);
-        if (ghostGroup && ghostGroup.gameObject.activeSelf) 
-            ghostGroup.anchoredPosition = Vector2.Lerp(ghostGroup.anchoredPosition, previousPosition, Time.deltaTime * 5f);
+        // 1. SLEEP OPTIMISATION: Only run maths if we are actually moving
+        if (_isMoving)
+        {
+            bool faceDone = MoveRect(faceGroup, currentPosition);
             
-        // Arrow logic (Only calc if visible)
-        if (arrowLine && arrowLine.gameObject.activeSelf) UpdateArrowGeometry();
+            // Only calculate ghost movement if it is actually visible
+            bool ghostDone = true;
+            if (ghostGroup && ghostGroup.gameObject.activeSelf)
+            {
+                ghostDone = MoveRect(ghostGroup, previousPosition);
+            }
+
+            // If everyone has arrived, go to sleep
+            if (faceDone && ghostDone)
+            {
+                _isMoving = false;
+            }
+
+            // Arrow Logic: Only calculate if visible and moving
+            if (arrowLine && arrowLine.gameObject.activeSelf) 
+            {
+                UpdateArrowGeometry();
+            }
+        }
+    }
+
+    // Return True if we have reached the destination, and snapped
+    private bool MoveRect(RectTransform rect, Vector2 target)
+    {
+        if (!rect) return true;
+
+        // 1. Move smoothly
+        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, target, Time.deltaTime * 5f);
+
+        // 2. Check if close enough to snap
+        // Use sqrMagnitude as it's faster than Vector2.Distance
+        if ((rect.anchoredPosition - target).sqrMagnitude < SNAP_SQR)
+        {
+            rect.anchoredPosition = target; // Hard snap to exact pixel
+            return true; // Done
+        }
+        return false; // Keep moving
     }
 
     public void UpdateVisuals(Vector2 currPos, Vector2 prevPos, Sprite fLeft, Sprite fRight, Sprite gLeft, Sprite gRight, bool ghostMode)
     {
+        // Wake the script only if the target position has changed
+        if (currPos != currentPosition || prevPos != previousPosition)
+        {
+            _isMoving = true;
+        }
+
         currentPosition = currPos;
         previousPosition = prevPos;
         _isGhostModeEnabled = ghostMode;
