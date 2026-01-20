@@ -8359,10 +8359,10 @@ MonoBehaviour:
   comparisonTabButton: {fileID: 661483552}
   activeTabColour: {r: 1, g: 1, b: 1, a: 1}
   inactiveTabColour: {r: 0.6, g: 0.6, b: 0.6, a: 1}
-  nextPolicyButton: {fileID: 303927371}
-  resetButton: {fileID: 735488784}
-  optionAButton: {fileID: 1948026647}
-  optionBButton: {fileID: 577898686}
+  nextPolicyButton: {fileID: 360748899}
+  resetButton: {fileID: 964357458}
+  optionAButton: {fileID: 1868529732}
+  optionBButton: {fileID: 622325607}
   policyInfoPanel: {fileID: 28349564}
   comparisonPanel: {fileID: 698477936}
   rulesPopupPanel: {fileID: 1622502177}
@@ -8374,9 +8374,9 @@ MonoBehaviour:
   policyStatsText: {fileID: 699122555}
   comparisonSubtitleText: {fileID: 201786671}
   comparisonBodyText: {fileID: 2103049792}
-  xAxisDropdown: {fileID: 1049575896}
-  yAxisDropdown: {fileID: 170136877}
-  faceModeDropdown: {fileID: 826504258}
+  xAxisDropdown: {fileID: 2020351019}
+  yAxisDropdown: {fileID: 903754769}
+  faceModeDropdown: {fileID: 1549185232}
 --- !u!4 &1137985466
 Transform:
   m_ObjectHideFlags: 0
