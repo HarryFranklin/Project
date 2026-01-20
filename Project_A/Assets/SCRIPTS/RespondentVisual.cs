@@ -43,7 +43,7 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         data = respondent;
         _manager = manager;
         
-        // Default state: Hidden
+        // Default state: hidden
         if (ghostGroup) ghostGroup.gameObject.SetActive(false);
         if (arrowLine) arrowLine.gameObject.SetActive(false);
     }
@@ -51,7 +51,7 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     public bool ManualUpdate(float deltaTime)
     {
         // 1. Sleep Optimisation
-        if (!_isMoving) return false; // Return 'false' to say "I am sleeping"
+        if (!_isMoving) return false; // Return False to say "I am sleeping"
 
         bool faceDone = MoveRect(faceGroup, currentPosition, deltaTime);
         
@@ -71,7 +71,7 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
             UpdateArrowGeometry();
         }
         
-        return true; // Return 'true' to say "I am still active"
+        return true; // Return True to say "I am still active"
     }
 
     // Return True if we have reached the destination, and snapped
@@ -116,6 +116,44 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         
         // Reset alpha
         if (!_isHovered && rootCanvasGroup) rootCanvasGroup.alpha = 1f;
+    }
+
+    public void SetFocusState(bool isTarget, bool isSomeoneHovered)
+    {
+        _isHovered = isTarget;
+
+        // 1. Normal View
+        if (!isSomeoneHovered)
+        {
+            if (rootCanvasGroup) rootCanvasGroup.alpha = 1f;
+            if (arrowLine) arrowLine.gameObject.SetActive(false);
+            if (ghostGroup) ghostGroup.gameObject.SetActive(_isGhostModeEnabled);
+            return;
+        }
+
+        // 2. Target
+        if (isTarget)
+        {
+            if (rootCanvasGroup) rootCanvasGroup.alpha = 1f;
+            transform.SetAsLastSibling(); 
+
+            if (_isGhostModeEnabled)
+            {
+                if (ghostGroup) ghostGroup.gameObject.SetActive(true);
+                if (arrowLine) 
+                {
+                    arrowLine.gameObject.SetActive(true);
+                    UpdateArrowGeometry(); 
+                }
+            }
+        }
+        // C. Background
+        else
+        {
+            float fadeAlpha = _isGhostModeEnabled ? 0.05f : 0.1f; 
+            if (rootCanvasGroup) rootCanvasGroup.alpha = fadeAlpha;
+            if (arrowLine) arrowLine.gameObject.SetActive(false);
+        }
     }
 
     public void SetHoverState(bool isTarget, bool isSomeoneHovered)
