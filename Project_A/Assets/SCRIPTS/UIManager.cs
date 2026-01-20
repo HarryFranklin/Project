@@ -49,6 +49,7 @@ public class UIManager : MonoBehaviour
 
     [Header("Visual Tools")]
     public Toggle ghostModeToggle;
+    public Toggle arrowModeToggle;
 
     // Determine the entire state of the UI
     private bool _isPolicyTabActive = true; 
@@ -71,8 +72,9 @@ public class UIManager : MonoBehaviour
         if (optionAButton) optionAButton.onClick.AddListener(() => simulationManager.PreviewOptionA());
         if (optionBButton) optionBButton.onClick.AddListener(() => simulationManager.PreviewOptionB());
 
-        // 2A. Grab Toggle Mode
+        // 2A. Grab Toggle Modes
         if (ghostModeToggle) ghostModeToggle.onValueChanged.AddListener(OnGhostToggleChanged);
+        if (arrowModeToggle) arrowModeToggle.onValueChanged.AddListener((val) => simulationManager.SetArrowMode(val));
 
         // 3. Initial Draw
         RefreshAllVisuals();

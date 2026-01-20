@@ -184,10 +184,17 @@ public class SimulationManager : MonoBehaviour
         }
     }
 
+    public void SetArrowMode(bool enabled)
+    {
+        if (visuals) visuals.SetArrowMode(enabled);
+    }
+
     // --- HOVER LOGIC ---
     public void OnHoverEnter(Respondent r)
     {
         if (r == null || _currentLS == null || uiManager == null) return;
+
+        if (visuals) visuals.SetHoverHighlight(r); // For showing the ghost arrow on hover
 
         int index = _populationList.IndexOf(r);
         if (index == -1) return;
@@ -207,6 +214,7 @@ public class SimulationManager : MonoBehaviour
 
     public void OnHoverExit()
     {
+        if (visuals) visuals.SetHoverHighlight(null); // for hovering off of the face
         CalculateAndRefreshUI(); 
     }
 

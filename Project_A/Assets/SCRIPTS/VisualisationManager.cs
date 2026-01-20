@@ -10,7 +10,10 @@ public class VisualisationManager : MonoBehaviour
     public GraphAxisVisuals graphAxes;
 
     [Header("Visual Assets")]
-    public Sprite faceGreen, faceYellow, faceRed, faceDead;
+    public Sprite faceGreen;
+    public Sprite faceYellow; 
+    public Sprite faceRed; 
+    public Sprite faceDead;
 
     // Optimisation - array is faster than list
     private RespondentVisual[] _activeVisualsArray; 
@@ -62,12 +65,6 @@ public class VisualisationManager : MonoBehaviour
     }
 
     // --- 3. DISPLAY LOGIC ---
-
-    public void SetGhostMode(bool enable)
-    {
-        _showGhostOverlay = enable;
-    }
-
     public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis, FaceMode faceMode)
     {
         // 1. Update background elements
@@ -154,6 +151,21 @@ public class VisualisationManager : MonoBehaviour
                 bool isTarget = (target != null && v.data.id == target.id);
                 v.SetFocusState(isTarget, anyoneHovered);
             }
+        }
+    }
+
+    public void SetGhostMode(bool enable)
+    {
+        _showGhostOverlay = enable;
+    }
+
+    public void SetArrowMode(bool showAll)
+    {
+        if (_activeVisualsArray == null) return;
+
+        for (int i = 0; i < _activeVisualsArray.Length; i++)
+        {
+            _activeVisualsArray[i].SetArrowState(showAll);
         }
     }
 
