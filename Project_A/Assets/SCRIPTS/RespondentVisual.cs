@@ -48,50 +48,45 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         if (arrowLine) arrowLine.gameObject.SetActive(false);
     }
 
-    void Update()
+    public bool ManualUpdate(float deltaTime)
     {
-        // 1. SLEEP OPTIMISATION: Only run maths if we are actually moving
-        if (_isMoving)
+        // 1. Sleep Optimisation
+        if (!_isMoving) return false; // Return 'false' to say "I am sleeping"
+
+        bool faceDone = MoveRect(faceGroup, currentPosition, deltaTime);
+        
+        bool ghostDone = true;
+        if (ghostGroup && ghostGroup.gameObject.activeSelf)
         {
-            bool faceDone = MoveRect(faceGroup, currentPosition);
-            
-            // Only calculate ghost movement if it is actually visible
-            bool ghostDone = true;
-            if (ghostGroup && ghostGroup.gameObject.activeSelf)
-            {
-                ghostDone = MoveRect(ghostGroup, previousPosition);
-            }
-
-            // If everyone has arrived, go to sleep
-            if (faceDone && ghostDone)
-            {
-                _isMoving = false;
-            }
-
-            // Arrow Logic: Only calculate if visible and moving
-            if (arrowLine && arrowLine.gameObject.activeSelf) 
-            {
-                UpdateArrowGeometry();
-            }
+            ghostDone = MoveRect(ghostGroup, previousPosition, deltaTime);
         }
+
+        if (faceDone && ghostDone)
+        {
+            _isMoving = false;
+        }
+
+        if (arrowLine && arrowLine.gameObject.activeSelf) 
+        {
+            UpdateArrowGeometry();
+        }
+        
+        return true; // Return 'true' to say "I am still active"
     }
 
     // Return True if we have reached the destination, and snapped
-    private bool MoveRect(RectTransform rect, Vector2 target)
+    private bool MoveRect(RectTransform rect, Vector2 target, float deltaTime)
     {
         if (!rect) return true;
+        
+        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, target, deltaTime * 5f);
 
-        // 1. Move smoothly
-        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, target, Time.deltaTime * 5f);
-
-        // 2. Check if close enough to snap
-        // Use sqrMagnitude as it's faster than Vector2.Distance
         if ((rect.anchoredPosition - target).sqrMagnitude < SNAP_SQR)
         {
-            rect.anchoredPosition = target; // Hard snap to exact pixel
-            return true; // Done
+            rect.anchoredPosition = target;
+            return true;
         }
-        return false; // Keep moving
+        return false;
     }
 
     public void UpdateVisuals(Vector2 currPos, Vector2 prevPos, Sprite fLeft, Sprite fRight, Sprite gLeft, Sprite gRight, bool ghostMode)
