@@ -8,31 +8,28 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     public Respondent data;
 
     [Header("Coordinate Storage")]
-    public Vector2 currentPosition;
-    public Vector2 previousPosition;
+    public Vector2 currentPosition;  
+    public Vector2 previousPosition; 
 
     [Header("Visual Groups")]
     public RectTransform faceGroup;  
-    public RectTransform ghostGroup;
-    public RectTransform arrowLine;
+    public RectTransform ghostGroup; 
+    public RectTransform arrowLine;  
 
     [Header("Images")]
     public Image faceLeft;
     public Image faceRight;
-    public Image ghostLeft;
+    public Image ghostLeft; 
     public Image ghostRight;
-    
+
     [Header("Fading")]
     public CanvasGroup rootCanvasGroup;
 
-    // Optimisation Settings
-    // 0.1f is the sweetspot for pixel snapping - 0.5 is too much as it could snap an object up to the next pixel.
-    // This cuts the infinite tail off of the Lerp
+    // --- Optimisation ---
     private const float SNAP_DISTANCE = 0.1f; 
-    private const float SNAP_SQR = SNAP_DISTANCE * SNAP_DISTANCE; // Pre-calculate for speed
-
-    private bool _isMoving;
-
+    private const float SNAP_SQR = SNAP_DISTANCE * SNAP_DISTANCE; 
+    private bool _isMoving = false;
+    
     // State
     private SimulationManager _manager;
     private bool _isGhostModeEnabled = false;
@@ -42,45 +39,43 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
     {
         data = respondent;
         _manager = manager;
-        
-        // Default state: hidden
+
         if (ghostGroup) ghostGroup.gameObject.SetActive(false);
         if (arrowLine) arrowLine.gameObject.SetActive(false);
+        
+        // Safety: calculate arrow once at spawn so it's ready
+        UpdateArrowGeometry();
     }
 
-    public bool ManualUpdate(float deltaTime)
+    // --- Movement loop ---
+    public bool ManualUpdate(float dt)
     {
-        // 1. Sleep Optimisation
-        if (!_isMoving) return false; // Return False to say "I am sleeping"
+        if (!_isMoving) return false;
 
-        bool faceDone = MoveRect(faceGroup, currentPosition, deltaTime);
+        bool faceDone = MoveRect(faceGroup, currentPosition, dt);
         
+        // We always move the ghost (even if invisible) so its position is ready for the arrow
         bool ghostDone = true;
-        if (ghostGroup && ghostGroup.gameObject.activeSelf)
+        if (ghostGroup) 
         {
-            ghostDone = MoveRect(ghostGroup, previousPosition, deltaTime);
+            ghostDone = MoveRect(ghostGroup, previousPosition, dt);
         }
 
         if (faceDone && ghostDone)
         {
             _isMoving = false;
-        }
-
-        if (arrowLine && arrowLine.gameObject.activeSelf) 
-        {
+            // Calculate the arrow geometry once it stopped moving
             UpdateArrowGeometry();
         }
-        
-        return true; // Return True to say "I am still active"
+        return true; 
     }
 
-    // Return True if we have reached the destination, and snapped
-    private bool MoveRect(RectTransform rect, Vector2 target, float deltaTime)
+    private bool MoveRect(RectTransform rect, Vector2 target, float dt)
     {
         if (!rect) return true;
         
-        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, target, deltaTime * 5f);
-
+        rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, target, dt * 5f);
+        
         if ((rect.anchoredPosition - target).sqrMagnitude < SNAP_SQR)
         {
             rect.anchoredPosition = target;
@@ -91,38 +86,30 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
 
     public void UpdateVisuals(Vector2 currPos, Vector2 prevPos, Sprite fLeft, Sprite fRight, Sprite gLeft, Sprite gRight, bool ghostMode)
     {
-        // Wake the script only if the target position has changed
-        if (currPos != currentPosition || prevPos != previousPosition)
+        if (currPos != currentPosition || prevPos != previousPosition) 
         {
             _isMoving = true;
         }
 
-        currentPosition = currPos;
+        currentPosition = currPos; 
         previousPosition = prevPos;
         _isGhostModeEnabled = ghostMode;
-
-        // Sprites
+        
         if (faceLeft) faceLeft.sprite = fLeft;
         if (faceRight) faceRight.sprite = fRight;
         if (ghostLeft) ghostLeft.sprite = gLeft;
         if (ghostRight) ghostRight.sprite = gRight;
 
-        // Visibility logic (default without hover)
-        // If ghost mode is on, show the ghost faintly. If off, hide it.
         if (ghostGroup) ghostGroup.gameObject.SetActive(_isGhostModeEnabled);
-        
-        // Arrow is hidden until hover
-        if (arrowLine) arrowLine.gameObject.SetActive(false); 
-        
-        // Reset alpha
-        if (!_isHovered && rootCanvasGroup) rootCanvasGroup.alpha = 1f;
+        if (arrowLine) arrowLine.gameObject.SetActive(false);
     }
 
+    // --- Hover logic ---
     public void SetFocusState(bool isTarget, bool isSomeoneHovered)
     {
         _isHovered = isTarget;
 
-        // 1. Normal View
+        // 1. Reset (no one is hovered over)
         if (!isSomeoneHovered)
         {
             if (rootCanvasGroup) rootCanvasGroup.alpha = 1f;
@@ -131,65 +118,23 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
             return;
         }
 
-        // 2. Target
+        // 2. Target (show arrows)
         if (isTarget)
         {
             if (rootCanvasGroup) rootCanvasGroup.alpha = 1f;
-            transform.SetAsLastSibling(); 
+            transform.SetAsLastSibling();
 
-            if (_isGhostModeEnabled)
-            {
-                if (ghostGroup) ghostGroup.gameObject.SetActive(true);
-                if (arrowLine) 
-                {
-                    arrowLine.gameObject.SetActive(true);
-                    UpdateArrowGeometry(); 
-                }
-            }
+            // If I'm the target, I always show the arrow.
+            // Ignore '_isGhostModeEnabled' here because the user is specifically pointing at this person.
+            bool showDetails = true; 
+
+            if (ghostGroup && showDetails) ghostGroup.gameObject.SetActive(true);
+            if (arrowLine && showDetails) arrowLine.gameObject.SetActive(true);
         }
-        // C. Background
+        // 3. Fade out
         else
         {
-            float fadeAlpha = _isGhostModeEnabled ? 0.05f : 0.1f; 
-            if (rootCanvasGroup) rootCanvasGroup.alpha = fadeAlpha;
-            if (arrowLine) arrowLine.gameObject.SetActive(false);
-        }
-    }
-
-    public void SetHoverState(bool isTarget, bool isSomeoneHovered)
-    {
-        _isHovered = isTarget;
-
-        // No one is hovering -> Show normal state
-        if (!isSomeoneHovered)
-        {
-            if (rootCanvasGroup) rootCanvasGroup.alpha = 1f;
-            if (arrowLine) arrowLine.gameObject.SetActive(false);
-            if (ghostGroup) ghostGroup.gameObject.SetActive(_isGhostModeEnabled); // Revert to global setting
-            return;
-        }
-
-        // I am the target -> isolate mode
-        if (isTarget)
-        {
-            if (rootCanvasGroup) rootCanvasGroup.alpha = 1f;
-            transform.SetAsLastSibling(); // Bring to front
-
-            if (_isGhostModeEnabled)
-            {
-                // Ensure ghost is visible
-                if (ghostGroup) ghostGroup.gameObject.SetActive(true);
-                // Turn on the arrow
-                if (arrowLine) arrowLine.gameObject.SetActive(true);
-            }
-        }
-        // I am not the target, fadem e out
-        else
-        {
-            // If Ghost mode is on, fade out fully to focus on the trajectory
-            // If Ghost mode is off, dim slightly (standard behaviour)
-            float fadeAlpha = _isGhostModeEnabled ? 0.02f : 0.1f; 
-            
+            float fadeAlpha = (_isGhostModeEnabled || isSomeoneHovered) ? 0.05f : 0.1f; 
             if (rootCanvasGroup) rootCanvasGroup.alpha = fadeAlpha;
             if (arrowLine) arrowLine.gameObject.SetActive(false);
         }
@@ -197,20 +142,31 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
 
     private void UpdateArrowGeometry()
     {
-        // Draw line from ghost -> face
-        // They have the same parent, so use local anchored positions
+        if (!ghostGroup || !faceGroup || !arrowLine) return;
+
         Vector2 start = ghostGroup.anchoredPosition;
         Vector2 end = faceGroup.anchoredPosition;
         Vector2 diff = end - start;
 
-        if (diff.magnitude < 1f) return; // Hide if too close
+        // If distance is zero, hide arrow to prevent glitches
+        if (diff.magnitude < 1f)
+        {
+            arrowLine.sizeDelta = new Vector2(0, arrowLine.sizeDelta.y);
+            return;
+        }
 
-        arrowLine.anchoredPosition = start + (diff / 2f);
-        arrowLine.sizeDelta = new Vector2(diff.magnitude, arrowLine.sizeDelta.y);
+        // 1. Position (midpoint)
+        arrowLine.anchoredPosition = start + (diff / 2f);        
+
+        // 2. Size (length)
+        arrowLine.sizeDelta = new Vector2(diff.magnitude, arrowLine.sizeDelta.y);        
+        
+        // 3. Rotation
         float angle = Mathf.Atan2(diff.y, diff.x) * Mathf.Rad2Deg;
         arrowLine.localRotation = Quaternion.Euler(0, 0, angle);
     }
 
+    // --- Hovering ---
     public void OnPointerEnter(PointerEventData e) => _manager.OnHoverEnter(data);
     public void OnPointerExit(PointerEventData e) => _manager.OnHoverExit();
 }
