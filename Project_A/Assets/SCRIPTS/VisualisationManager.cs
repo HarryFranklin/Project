@@ -47,70 +47,68 @@ public class VisualisationManager : MonoBehaviour
             Respondent r = population[i];
             float ls = currentLS[i];
             
-            // Calculate Metrics
-            float uSelfCurr = WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities);
-            float uSelfBase = WelfareMetrics.GetUtilityForPerson(baselineLS[i], r.personalUtilities);
+            // --- 1. Calc Metrics
             
+            // Current State
+            float uSelfCurr = WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities);
             float uSocCurr = WelfareMetrics.EvaluateDistribution(currentLS, r.societalUtilities);
+            
+            // Baseline State
+            float uSelfBase = WelfareMetrics.GetUtilityForPerson(baselineLS[i], r.personalUtilities);
             float uSocBase = WelfareMetrics.EvaluateDistribution(baselineLS, r.societalUtilities);
 
-            // Default
+            // --- 2. Face sprite logic---
             Sprite leftSprite = faceYellow;
             Sprite rightSprite = faceYellow;
 
-            if (ls <= -0.9f) // Dead for now
+            if (ls <= -0.9f) // Dead
             {
                 leftSprite = faceDead;
                 rightSprite = faceDead;
             }
             else
             {
-                // 1. Determine logic
                 if (isComparisonMode)
                 {
-                    // --- COMPARISON MODE ---
-                    // Left: Did *I* get better/worse? (Delta uSelf)
-                    // Right: Did *Society* get better/worse? (Delta uOthers)
+                    // Comparison: Relative colours (Better/Worse)
                     leftSprite = GetRelativeSprite(uSelfCurr, uSelfBase);
                     rightSprite = GetRelativeSprite(uSocCurr, uSocBase);
                 }
                 else
                 {
-                    // --- DEFAULT MODE  ---
-                    // Left: Am I happy? (Absolute LS)
-                    // Right: Is society fair? (Absolute uOthers)
+                    // Default: Absolute colours (Happy/Sad)
                     leftSprite = GetAbsoluteSprite(ls);
                     rightSprite = GetAbsoluteSocietySprite(uSocCurr); 
                 }
 
-                // 2. Logic for Left or Right
+                // Handle Face Modes (Split, or Single View)
                 switch (faceMode)
                 {
                     case FaceMode.PersonalWellbeing:
-                        rightSprite = leftSprite; // Show Self on both sides
+                        rightSprite = leftSprite; 
                         break;
-
                     case FaceMode.SocietalFairness:
-                        leftSprite = rightSprite; // Show Society on both sides
+                        leftSprite = rightSprite; 
                         break;
-                    
-                    // Case: Do nothing, keep them separate.
                 }
             }
 
-            // 3. Position Logic
+            // --- 3. Position logic ---
             Vector2 position;
-            if (ls <= -0.9f)
+            if (ls <= -0.9f) // is dead
             {
                 position = graphGrid.GetGraveyardPosition(r.id);
             }
             else
             {
-                float normX = GetNormalisedValue(ls, uSelfCurr, uSocCurr, xAxis);
-                float normY = GetNormalisedValue(ls, uSelfCurr, uSocCurr, yAxis);
+                // Pass baseline stats tocalculate Deltas
+                float normX = GetNormalisedValue(ls, uSelfCurr, uSocCurr, uSelfBase, uSocBase, xAxis);
+                float normY = GetNormalisedValue(ls, uSelfCurr, uSocCurr, uSelfBase, uSocBase, yAxis);
+                
                 position = graphGrid.GetPlotPosition(normX, normY, r.id);
             }
 
+            // --- 4. Update Visuals ---
             _respondentVisuals[i].UpdateVisuals(position, leftSprite, rightSprite);
         }
     }
@@ -146,15 +144,36 @@ public class VisualisationManager : MonoBehaviour
         return faceYellow;                    // No significant change
     }
 
-    private float GetNormalisedValue(float ls, float uSelf, float uSoc, AxisVariable type)
+    private float GetNormalisedValue(float ls, float uSelf, float uSoc, float uSelfBase, float uSocBase, AxisVariable type)
     {
         float val = 0;
+        
         switch(type) {
-            case AxisVariable.LifeSatisfaction: val = ls; break;
-            case AxisVariable.PersonalUtility: val = uSelf; break;
-            case AxisVariable.SocietalFairness: val = uSoc; break;
-            case AxisVariable.Wealth: val = ls; break; 
+            case AxisVariable.LifeSatisfaction: 
+                val = ls; 
+                break;
+                
+            case AxisVariable.PersonalUtility: 
+                val = uSelf; 
+                break;
+                
+            case AxisVariable.SocietalFairness: 
+                val = uSoc; 
+                break;
+                
+            case AxisVariable.Wealth: 
+                val = ls; 
+                break;
+            
+            case AxisVariable.DeltaPersonalUtility: 
+                val = uSelf - uSelfBase; 
+                break;
+                
+            case AxisVariable.DeltaSocietalFairness: 
+                val = uSoc - uSocBase; 
+                break;
         }
+        
         var range = graphAxes.GetRange(type);
         return Mathf.InverseLerp(range.min, range.max, val);
     }

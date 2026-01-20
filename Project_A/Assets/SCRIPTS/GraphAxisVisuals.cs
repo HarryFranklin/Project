@@ -70,28 +70,27 @@ public class GraphAxisVisuals : MonoBehaviour
     // Defining data ranges
     public AxisRange GetRange(AxisVariable type)
     {
-        if (type == AxisVariable.LifeSatisfaction)
+        switch (type)
         {
-            return new AxisRange(0, 10, "Life Satisfaction (0-10)");
-        }
-        else if (type == AxisVariable.PersonalUtility)
-        {
-            return new AxisRange(0, 1, "Personal Utility");
-        }
-        else if (type == AxisVariable.SocietalFairness)
-        {
-            return new AxisRange(0, 1, "Societal Fairness");
-        }
-        
-        // Future example: 
-        // else if (type == AxisVariable.SocietalUtility)
-        // {
-        //      return new AxisRange(-3, 3, "Income Change (£)"); 
-        // }
+            case AxisVariable.LifeSatisfaction:
+                return new AxisRange(0, 10, "Life Satisfaction (0-10)");
+            
+            case AxisVariable.PersonalUtility:
+                return new AxisRange(0, 1, "Personal Utility");
+            
+            case AxisVariable.SocietalFairness:
+                return new AxisRange(0, 1, "Societal Fairness");
 
-        else
-        {
-            return new AxisRange(0, 1, "Unknown");
+            case AxisVariable.DeltaPersonalUtility:
+                // Range: -0.5 to +0.5. Zero is in the middle.
+                return new AxisRange(-0.5f, 0.5f, "Change in Personal Utility");
+
+            case AxisVariable.DeltaSocietalFairness:
+                // Range: -0.2 to +0.2. (Zoomed in because societal shifts are smaller)
+                return new AxisRange(-0.2f, 0.2f, "Change in Societal Fairness");
+
+            default:
+                return new AxisRange(0, 1, "Unknown");
         }
     }
 }
