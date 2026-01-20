@@ -18,6 +18,9 @@ public class VisualisationManager : MonoBehaviour
     // Cache the instantiated visual objects
     private List<RespondentVisual> _respondentVisuals = new List<RespondentVisual>();
 
+    // For OnHover Ghosting
+    private bool _showGhostOverlay = false;
+
     // 1. Setup: Spawn the prefabs once
     public void CreatePopulation(List<Respondent> population, SimulationManager manager)
     {
@@ -38,82 +41,60 @@ public class VisualisationManager : MonoBehaviour
     public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis, FaceMode faceMode)
     {
         graphAxes.UpdateAxisVisuals(xAxis, yAxis);
-
-        // Check if we are in "Comparison Mode" (Is a policy active?)
-        bool isComparisonMode = (activePolicy != null);
+        bool isComparison = (activePolicy != null);
+        
+        // RULE: Ghost Mode only works if we are actually comparing something
+        bool enableGhosts = _showGhostOverlay && isComparison; 
 
         for (int i = 0; i < population.Length; i++)
         {
             Respondent r = population[i];
-            float ls = currentLS[i];
             
-            // --- 1. Calc Metrics
+            // 1. Current Math
+            float cLS = currentLS[i];
+            float cUSelf = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
+            float cUSoc = WelfareMetrics.EvaluateDistribution(currentLS, r.societalUtilities);
             
-            // Current State
-            float uSelfCurr = WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities);
-            float uSocCurr = WelfareMetrics.EvaluateDistribution(currentLS, r.societalUtilities);
+            // 2. Baseline Maths (Step 1: Calculate "Previous" position)
+            float bLS = baselineLS[i];
+            float bUSelf = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
+            float bUSoc = WelfareMetrics.EvaluateDistribution(baselineLS, r.societalUtilities);
+
+            // 3. Sprites
+            Sprite leftSpr, rightSpr;
+            if (isComparison) {
+                float bUSelf_ForSpr = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
+                leftSpr = GetRelativeSprite(cUSelf, bUSelf_ForSpr);
+                rightSpr = GetRelativeSprite(cUSoc, bUSoc);
+            } else {
+                leftSpr = GetAbsoluteSprite(cLS);
+                rightSpr = GetAbsoluteSocietySprite(cUSoc);
+            }
             
-            // Baseline State
-            float uSelfBase = WelfareMetrics.GetUtilityForPerson(baselineLS[i], r.personalUtilities);
-            float uSocBase = WelfareMetrics.EvaluateDistribution(baselineLS, r.societalUtilities);
+            // Ghost Sprites (Always Absolute "How I was")
+            Sprite gLeft = GetAbsoluteSprite(bLS);
+            Sprite gRight = GetAbsoluteSocietySprite(bUSoc);
 
-            // --- 2. Face sprite logic---
-            Sprite leftSprite = faceYellow;
-            Sprite rightSprite = faceYellow;
+            // 4. Positions
+            // Calulate two positions: Current and Baseline
+            Vector2 currPos = GetPos(r.id, cLS, cUSelf, cUSoc, cUSelf, cUSoc, xAxis, yAxis); // Pass Current for Current
+            Vector2 basePos = GetPos(r.id, bLS, bUSelf, bUSoc, bUSelf, bUSoc, xAxis, yAxis); // Pass Baseline for Baseline
 
-            if (ls <= -0.9f) // Dead
-            {
-                leftSprite = faceDead;
-                rightSprite = faceDead;
-            }
-            else
-            {
-                if (isComparisonMode)
-                {
-                    // Comparison: Relative colours (Better/Worse)
-                    leftSprite = GetRelativeSprite(uSelfCurr, uSelfBase);
-                    rightSprite = GetRelativeSprite(uSocCurr, uSocBase);
-                }
-                else
-                {
-                    // Default: Absolute colours (Happy/Sad)
-                    leftSprite = GetAbsoluteSprite(ls);
-                    rightSprite = GetAbsoluteSocietySprite(uSocCurr); 
-                }
-
-                // Handle Face Modes (Split, or Single View)
-                switch (faceMode)
-                {
-                    case FaceMode.PersonalWellbeing:
-                        rightSprite = leftSprite; 
-                        break;
-                    case FaceMode.SocietalFairness:
-                        leftSprite = rightSprite; 
-                        break;
-                }
-            }
-
-            // --- 3. Position logic ---
-            Vector2 position;
-            if (ls <= -0.9f) // is dead
-            {
-                position = graphGrid.GetGraveyardPosition(r.id);
-            }
-            else
-            {
-                // Pass baseline stats tocalculate Deltas
-                float normX = GetNormalisedValue(ls, uSelfCurr, uSocCurr, uSelfBase, uSocBase, xAxis);
-                float normY = GetNormalisedValue(ls, uSelfCurr, uSocCurr, uSelfBase, uSocBase, yAxis);
-                
-                position = graphGrid.GetPlotPosition(normX, normY, r.id);
-            }
-
-            // --- 4. Update Visuals ---
-            _respondentVisuals[i].UpdateVisuals(position, leftSprite, rightSprite);
+            // 5. Update Visual
+            _respondentVisuals[i].UpdateVisuals(currPos, basePos, leftSpr, rightSpr, gLeft, gRight, enableGhosts);
         }
     }
 
     // --- HELPER LOGIC ---
+
+    // Used for 
+    private Vector2 GetPos(int id, float ls, float self, float soc, float baseSelf, float baseSoc, AxisVariable x, AxisVariable y)
+    {
+        if (ls <= -0.9f) return graphGrid.GetGraveyardPosition(id);
+        float nx = GetNormalisedValue(ls, self, soc, baseSelf, baseSoc, x); 
+        float ny = GetNormalisedValue(ls, self, soc, baseSelf, baseSoc, y);
+        return graphGrid.GetPlotPosition(nx, ny, id);
+    }
 
     // Default Mode: Absolute Life Satisfaction (0-10)
     private Sprite GetAbsoluteSprite(float ls)
@@ -176,5 +157,11 @@ public class VisualisationManager : MonoBehaviour
         
         var range = graphAxes.GetRange(type);
         return Mathf.InverseLerp(range.min, range.max, val);
+    }
+
+    public void SetGhostMode(bool enable)
+    {
+        // SimulationManager will trigger a refresh next frame
+        _showGhostOverlay = enable;
     }
 }

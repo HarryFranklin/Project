@@ -47,6 +47,9 @@ public class UIManager : MonoBehaviour
     public TMP_Dropdown yAxisDropdown;
     public TMP_Dropdown faceModeDropdown;
 
+    [Header("Visual Tools")]
+    public Toggle ghostModeToggle;
+
     // Determine the entire state of the UI
     private bool _isPolicyTabActive = true; 
     private bool _isRulesPopupOpen = false;
@@ -67,6 +70,9 @@ public class UIManager : MonoBehaviour
         if (resetButton) resetButton.onClick.AddListener(OnResetClicked);
         if (optionAButton) optionAButton.onClick.AddListener(() => simulationManager.PreviewOptionA());
         if (optionBButton) optionBButton.onClick.AddListener(() => simulationManager.PreviewOptionB());
+
+        // 2A. Grab Toggle Mode
+        if (ghostModeToggle) ghostModeToggle.onValueChanged.AddListener(OnGhostToggleChanged);
 
         // 3. Initial Draw
         RefreshAllVisuals();
@@ -91,12 +97,19 @@ public class UIManager : MonoBehaviour
         RefreshAllVisuals();
     }
 
+    // Reset Button
     void OnResetClicked()
     {
         simulationManager.ResetToDefault();
         if (xAxisDropdown) xAxisDropdown.value = (int)simulationManager.xAxis;
         if (yAxisDropdown) yAxisDropdown.value = (int)simulationManager.yAxis;
         if (faceModeDropdown) faceModeDropdown.value = (int)simulationManager.faceMode;
+    }
+
+    // Ghost Toggle
+    void OnGhostToggleChanged(bool isOn) 
+    {
+        simulationManager.SetGhostMode(isOn);
     }
 
     // This function enforces the state variables on the Scene.

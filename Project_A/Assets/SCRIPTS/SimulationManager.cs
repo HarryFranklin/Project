@@ -174,6 +174,16 @@ public class SimulationManager : MonoBehaviour
         UpdateSimulation();
     }
 
+    public void SetGhostMode(bool enabled)
+    {
+        if (visuals) 
+        {
+            visuals.SetGhostMode(enabled);
+            // Force a refresh so it appears instantly
+            UpdateSimulation(); 
+        }
+    }
+
     // --- HOVER LOGIC ---
     public void OnHoverEnter(Respondent r)
     {
