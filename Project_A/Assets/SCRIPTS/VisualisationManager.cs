@@ -15,6 +15,10 @@ public class VisualisationManager : MonoBehaviour
     public Sprite faceRed; 
     public Sprite faceDead;
 
+    // Cache arrays
+    private float[] _cacheXValues;
+    private float[] _cacheYValues;
+
     // Optimisation - array is faster than list
     private RespondentVisual[] _activeVisualsArray; 
     private List<RespondentVisual> _visualsList = new List<RespondentVisual>(); // Keep list for easy adding/removing
@@ -22,8 +26,7 @@ public class VisualisationManager : MonoBehaviour
     // State
     private bool _showGhostOverlay = false;
 
-    // --- 1. SETUP ---
-
+    // --- 1. Setup ---
     public void CreatePopulation(List<Respondent> population, SimulationManager manager)
     {
         // Clear old objects
@@ -44,10 +47,14 @@ public class VisualisationManager : MonoBehaviour
 
         // Convert to array as they're faster
         _activeVisualsArray = _visualsList.ToArray();
+
+        // Init Cache
+        int count = population.Count;
+        _cacheXValues = new float[count];
+        _cacheYValues = new float[count];
     }
 
-    // --- 2. MANAGER PATTERN UPDATE LOOP ---
-    
+    // --- 2. Manager Update Loop ---
     void Update()
     {
         // If we haven't spawned yet, do nothing
@@ -64,76 +71,100 @@ public class VisualisationManager : MonoBehaviour
         }
     }
 
-    // --- 3. DISPLAY LOGIC ---
+    // --- 3. Display Logic
     public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis, FaceMode faceMode)
     {
-        // 1. Update background elements
-        graphAxes.UpdateAxisVisuals(xAxis, yAxis);
+        int count = population.Length;
+        if (_cacheXValues == null || _cacheXValues.Length != count)
+        {
+            _cacheXValues = new float[count];
+            _cacheYValues = new float[count];
+        }
 
-        // 2. Determine modes
+        // Pass 1: Calculcate Values and Find Ranges
+        float xMin = float.MaxValue, xMax = float.MinValue;
+        float yMin = float.MaxValue, yMax = float.MinValue;
+
+        for (int i = 0; i < count; i++)
+        {
+            Respondent r = population[i];
+
+            // 1. Calculate Metrics ONCE
+            float cLS = currentLS[i];
+            float bLS = baselineLS[i];
+
+            // Only calculate costly metrics if we actually need them for the axis
+            // (Helper function handles the math)
+            float valX = CalculateAxisValue(xAxis, r, cLS, bLS, currentLS, baselineLS);
+            float valY = CalculateAxisValue(yAxis, r, cLS, bLS, currentLS, baselineLS);
+
+            // 2. Store in Cache
+            _cacheXValues[i] = valX;
+            _cacheYValues[i] = valY;
+
+            // 3. Track Min/Max (Ignore dead people for range calculation to keep it clean?)
+            if (cLS > -0.9f) 
+            {
+                if (valX < xMin) xMin = valX;
+                if (valX > xMax) xMax = valX;
+                if (valY < yMin) yMin = valY;
+                if (valY > yMax) yMax = valY;
+            }
+        }
+
+        // --- Process Ranges, Dynamic vs Fixed
+        GetFinalRange(xAxis, ref xMin, ref xMax);
+        GetFinalRange(yAxis, ref yMin, ref yMax);
+
+        // --- Update Axes ---
+        graphAxes.UpdateAxisVisuals(xAxis, xMin, xMax, yAxis, yMin, yMax);
+
+        // --- Pass 2: Draw Visuals ---
         bool isComparisonMode = (activePolicy != null);
         bool enableGhosts = _showGhostOverlay && isComparisonMode; 
 
-        // 3. Main Calculation Loop
-        for (int i = 0; i < population.Length; i++)
+        for (int i = 0; i < count; i++)
         {
             Respondent r = population[i];
-            
-            // --- 1. Calculate metrics (current) ---
             float cLS = currentLS[i];
+            
             float cUSelf = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
             float cUSoc = WelfareMetrics.EvaluateDistribution(currentLS, r.societalUtilities);
-            
-            // --- 2. Calculate metrics (baseline) ---
             float bLS = baselineLS[i];
             float bUSelf = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
             float bUSoc = WelfareMetrics.EvaluateDistribution(baselineLS, r.societalUtilities);
 
-            // --- 3. Sprite selection ---
+            // Sprite Selection
             Sprite leftSprite = faceYellow;
             Sprite rightSprite = faceYellow;
-
-            if (cLS <= -0.9f) // Dead
-            {
-                leftSprite = faceDead;
-                rightSprite = faceDead;
-            }
+            if (cLS <= -0.9f) { leftSprite = rightSprite = faceDead; }
             else
             {
                 if (isComparisonMode)
                 {
-                    // Compare mode: Relative change
-                    // Use baseline uSelf
                     float bUSelfForSpr = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
-                    
                     leftSprite = GetRelativeSprite(cUSelf, bUSelfForSpr);
                     rightSprite = GetRelativeSprite(cUSoc, bUSoc);
                 }
                 else
                 {
-                    // Default mode: Absolute State
                     leftSprite = GetAbsoluteSprite(cLS);
                     rightSprite = GetAbsoluteSocietySprite(cUSoc); 
                 }
-
-                // Apply Face Mode Filters
-                switch (faceMode)
-                {
-                    case FaceMode.PersonalWellbeing: rightSprite = leftSprite; break;
-                    case FaceMode.SocietalFairness: leftSprite = rightSprite; break;
-                }
+                if (faceMode == FaceMode.PersonalWellbeing) rightSprite = leftSprite;
+                if (faceMode == FaceMode.SocietalFairness) leftSprite = rightSprite;
             }
 
-            // Ghost Sprites are always "Absolute history" (how I was before)
             Sprite gLeft = GetAbsoluteSprite(bLS);
             Sprite gRight = GetAbsoluteSocietySprite(bUSoc);
 
-            // --- c. Position calculation ---
-            // Calculate both positions so the visual can interpolate/ghost between them
-            Vector2 currPos = GetPos(r.id, cLS, cUSelf, cUSoc, bUSelf, bUSoc, xAxis, yAxis);
-            Vector2 basePos = GetPos(r.id, bLS, bUSelf, bUSoc, bUSelf, bUSoc, xAxis, yAxis);
+            // Positioning: Use the Cached values and the Calculated Ranges
+            float baseX = CalculateAxisValue(xAxis, r, bLS, bLS, baselineLS, baselineLS); // Baseline args
+            float baseY = CalculateAxisValue(yAxis, r, bLS, bLS, baselineLS, baselineLS);
 
-            // --- 5. Push to Visual ---
+            Vector2 currPos = GetPos(r.id, _cacheXValues[i], _cacheYValues[i], xMin, xMax, yMin, yMax);
+            Vector2 basePos = GetPos(r.id, baseX, baseY, xMin, xMax, yMin, yMax);
+
             _activeVisualsArray[i].UpdateVisuals(currPos, basePos, leftSprite, rightSprite, gLeft, gRight, enableGhosts);
         }
     }
@@ -171,33 +202,72 @@ public class VisualisationManager : MonoBehaviour
 
     // --- HELPERS ---
 
-    // Updated to accept baseline args for Delta graphs
-    private Vector2 GetPos(int id, float ls, float self, float soc, float baseSelf, float baseSoc, AxisVariable x, AxisVariable y)
+    // Calculate the axis value
+    private float CalculateAxisValue(AxisVariable type, Respondent r, float ls, float baseLS, float[] popLS, float[] popBaseLS)
     {
-        if (ls <= -0.9f) return graphGrid.GetGraveyardPosition(id);
-
-        float nx = GetNormalisedValue(ls, self, soc, baseSelf, baseSoc, x);
-        float ny = GetNormalisedValue(ls, self, soc, baseSelf, baseSoc, y);
-        
-        return graphGrid.GetPlotPosition(nx, ny, id);
+        switch (type)
+        {
+            case AxisVariable.LifeSatisfaction: return ls;
+            case AxisVariable.PersonalUtility: return WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities);
+            case AxisVariable.SocietalFairness: return WelfareMetrics.EvaluateDistribution(popLS, r.societalUtilities);
+            case AxisVariable.Wealth: return ls; // Placeholder
+            
+            case AxisVariable.DeltaPersonalUtility: 
+                return WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities) - 
+                       WelfareMetrics.GetUtilityForPerson(baseLS, r.personalUtilities);
+            
+            case AxisVariable.DeltaSocietalFairness:
+                return WelfareMetrics.EvaluateDistribution(popLS, r.societalUtilities) - 
+                       WelfareMetrics.EvaluateDistribution(popBaseLS, r.societalUtilities);
+            
+            default: return 0;
+        }
     }
 
-    private float GetNormalisedValue(float ls, float uSelf, float uSoc, float uSelfBase, float uSocBase, AxisVariable type)
+    // Calculate the range
+    private void GetFinalRange(AxisVariable type, ref float min, ref float max)
     {
-        float val = 0;
-        switch(type) {
-            case AxisVariable.LifeSatisfaction: val = ls; break;
-            case AxisVariable.PersonalUtility: val = uSelf; break;
-            case AxisVariable.SocietalFairness: val = uSoc; break;
-            case AxisVariable.Wealth: val = ls; break; 
-            
-            // Delta Logic
-            case AxisVariable.DeltaPersonalUtility: val = uSelf - uSelfBase; break;
-            case AxisVariable.DeltaSocietalFairness: val = uSoc - uSocBase; break;
+        // 1. Fixed Ranges (Absolute)
+        if (type == AxisVariable.LifeSatisfaction || type == AxisVariable.Wealth) { min = 0; max = 10; return; }
+        if (type == AxisVariable.PersonalUtility || type == AxisVariable.SocietalFairness) { min = 0; max = 1; return; }
+
+        // 2. Dynamic Ranges (Deltas)
+        // If everything is zero (no policy), default to -0.1 to 0.1
+        if (min == float.MaxValue || max == float.MinValue || (min == 0 && max == 0))
+        {
+            min = -0.1f; max = 0.1f;
+            return;
         }
 
-        var range = graphAxes.GetRange(type);
-        return Mathf.InverseLerp(range.min, range.max, val);
+        // Symmetry: Delta graphs look best if 0 is in the middle.
+        // Find the biggest deviation from zero.
+        float absMax = Mathf.Max(Mathf.Abs(min), Mathf.Abs(max));
+        
+        // Add padding so points aren't on the edge
+        absMax *= 1.05f;
+
+        // Clamp to a sensible minimum so we don't zoom in to tiny deltas
+        if (absMax < 0.05f)
+        {
+            // Tiny values - clamp minimum to 0.05
+            absMax = 0.05f; 
+        }
+        else
+        {
+            // Standard values - Round to nearest 0.1
+            absMax = Mathf.Ceil(absMax * 10f) / 10f;
+        }
+
+        min = -absMax;
+        max = absMax;
+    }
+
+    // Accepts baseline args for Delta graphs
+    private Vector2 GetPos(int id, float valX, float valY, float xMin, float xMax, float yMin, float yMax)
+    {        
+        float normX = Mathf.InverseLerp(xMin, xMax, valX);
+        float normY = Mathf.InverseLerp(yMin, yMax, valY);
+        return graphGrid.GetPlotPosition(normX, normY, id);
     }
 
     // Sprite Helpers

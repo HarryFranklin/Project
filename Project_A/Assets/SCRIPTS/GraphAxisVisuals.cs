@@ -33,64 +33,53 @@ public class GraphAxisVisuals : MonoBehaviour
     }
 
     // Called by SimulationManager
-    public void UpdateAxisVisuals(AxisVariable xType, AxisVariable yType)
+    public void UpdateAxisVisuals(AxisVariable xType, float xMin, float xMax, AxisVariable yType, float yMin, float yMax)
     {
-        // 1. Get the ranges based on the axes enum in GraphGrid
-        AxisRange xRange = GetRange(xType);
-        AxisRange yRange = GetRange(yType);
+        // 1. Get Labels
+        AxisRange xInfo = GetDefaultSettings(xType);
+        AxisRange yInfo = GetDefaultSettings(yType);
 
-        // 2. Update text
-        if (xAxisTitle) xAxisTitle.text = xRange.label;
-        if (yAxisTitle) yAxisTitle.text = yRange.label;
-        if (xMinText) xMinText.text = xRange.min.ToString("0.##");
-        if (xMaxText) xMaxText.text = xRange.max.ToString("0.##");
-        if (yMinText) yMinText.text = yRange.min.ToString("0.##");
-        if (yMaxText) yMaxText.text = yRange.max.ToString("0.##");
+        // 2. Update Text
+        if (xAxisTitle) xAxisTitle.text = xInfo.label;
+        if (yAxisTitle) yAxisTitle.text = yInfo.label;
 
-        // 3. Calculate where zero is in normalised space (0-1)
-        float xZeroNorm = Mathf.InverseLerp(xRange.min, xRange.max, 0f); // e.g. -5 to 5 returns 0.5
-        float yZeroNorm = Mathf.InverseLerp(yRange.min, yRange.max, 0f);
+        if (xMinText) xMinText.text = FormatLabel(xMin);
+        if (xMaxText) xMaxText.text = FormatLabel(xMax);
+        if (yMinText) yMinText.text = FormatLabel(yMin);
+        if (yMaxText) yMaxText.text = FormatLabel(yMax);
 
-        // 4. Ask GraphGrid where those points are in pixels
-        Vector2 originPixel = grid.GetPlotPosition(xZeroNorm, yZeroNorm, 0); // 0 as axes don't jitter
+        // 3. Move Axes Lines (Zero lines)
+        // We need to know where "0" is within the dynamic ranges
+        float xZeroNorm = Mathf.InverseLerp(xMin, xMax, 0f); 
+        float yZeroNorm = Mathf.InverseLerp(yMin, yMax, 0f);
 
-        // 5. Move the lines
-        if (xAxisLine)
-        {
-            // X-Axis sits at Y = 0
-            xAxisLine.anchoredPosition = new Vector2(0, originPixel.y);
-        }
-        if (yAxisLine)
-        {
-            // Y-Axis sits at X = 0
-            yAxisLine.anchoredPosition = new Vector2(originPixel.x, 0);
-        }
+        Vector2 originPixel = grid.GetPlotPosition(xZeroNorm, yZeroNorm, 0); 
+
+        if (xAxisLine) xAxisLine.anchoredPosition = new Vector2(0, originPixel.y);
+        if (yAxisLine) yAxisLine.anchoredPosition = new Vector2(originPixel.x, 0);
     }
 
-    // Defining data ranges
-    public AxisRange GetRange(AxisVariable type)
+    private string FormatLabel(float val)
+    {
+        // If small delta, show more decimal places
+        if (Mathf.Abs(val) < 1f && val != 0) return val.ToString("0.###");
+        return val.ToString("0.#");
+    }
+
+    public AxisRange GetDefaultSettings(AxisVariable type)
     {
         switch (type)
         {
-            case AxisVariable.LifeSatisfaction:
-                return new AxisRange(0, 10, "Life Satisfaction (0-10)");
+            case AxisVariable.LifeSatisfaction: return new AxisRange(0, 10, "Life Satisfaction");
+            case AxisVariable.PersonalUtility: return new AxisRange(0, 1, "Personal Utility");
+            case AxisVariable.SocietalFairness: return new AxisRange(0, 1, "Societal Fairness");
+            case AxisVariable.Wealth: return new AxisRange(0, 10, "Wealth Tier");
             
-            case AxisVariable.PersonalUtility:
-                return new AxisRange(0, 1, "Personal Utility");
+            // For deltas, return dummy 0-0 ranges because they're calculated dynamically
+            case AxisVariable.DeltaPersonalUtility: return new AxisRange(-1, 1, "Δ Personal Utility");
+            case AxisVariable.DeltaSocietalFairness: return new AxisRange(-1, 1, "Δ Societal Fairness");
             
-            case AxisVariable.SocietalFairness:
-                return new AxisRange(0, 1, "Societal Fairness");
-
-            case AxisVariable.DeltaPersonalUtility:
-                // Range: -0.5 to +0.5. Zero is in the middle.
-                return new AxisRange(-0.5f, 0.5f, "Change in Personal Utility");
-
-            case AxisVariable.DeltaSocietalFairness:
-                // Range: -0.2 to +0.2. (Zoomed in because societal shifts are smaller)
-                return new AxisRange(-0.2f, 0.2f, "Change in Societal Fairness");
-
-            default:
-                return new AxisRange(0, 1, "Unknown");
+            default: return new AxisRange(0, 1, "Unknown");
         }
     }
 }
