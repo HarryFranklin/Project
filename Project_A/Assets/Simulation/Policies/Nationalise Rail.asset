@@ -15,6 +15,7 @@ MonoBehaviour:
   policyName: Nationalise Rail
   description: Bringing railways into public ownership. Improves commuting for workers
     but has little impact on the very poor/rich.
+  politicalCost: 20
   baseChangeRich: -0.1
   baseChangeMiddle: 0.5
   baseChangePoor: 0

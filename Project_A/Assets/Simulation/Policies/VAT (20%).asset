@@ -15,6 +15,7 @@ MonoBehaviour:
   policyName: VAT (20%)
   description: It hurts everyone, but hurts the poor disproportionately because they
     spend a higher percentage of their income on essentials.
+  politicalCost: 5
   baseChangeRich: -0.2
   baseChangeMiddle: -0.5
   baseChangePoor: -1

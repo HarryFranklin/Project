@@ -15,6 +15,7 @@ MonoBehaviour:
   policyName: Wealth Tax
   description: "A new tax on assets over \xA31m, used to fund targeted welfare support
     for the lowest earners."
+  politicalCost: 15
   baseChangeRich: -2.5
   baseChangeMiddle: 0
   baseChangePoor: 0.5

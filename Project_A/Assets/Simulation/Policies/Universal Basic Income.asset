@@ -15,6 +15,7 @@ MonoBehaviour:
   policyName: Universal Basic Income
   description: A guaranteed monthly payment for every citizen, funded by higher taxes
     on high earners.
+  politicalCost: 55
   baseChangeRich: -1.5
   baseChangeMiddle: 0.5
   baseChangePoor: 2

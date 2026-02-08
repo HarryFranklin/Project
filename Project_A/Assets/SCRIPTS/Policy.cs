@@ -7,6 +7,8 @@ public class Policy : ScriptableObject
     public string policyName;
     [TextArea] public string description;
 
+    public int politicalCost = 10;
+
     // 1. Broad Impact 
     [Header("1. Broad Base Impact")]
     [Tooltip("This applies to everyone based on their wealth tier, before the specific rules below.")]

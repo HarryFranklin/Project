@@ -15,6 +15,7 @@ MonoBehaviour:
   policyName: Social Housing
   description: Building 100,000 affordable homes. Directly targets the housing crisis
     for low earners.
+  politicalCost: 15
   baseChangeRich: 0
   baseChangeMiddle: 0
   baseChangePoor: 0

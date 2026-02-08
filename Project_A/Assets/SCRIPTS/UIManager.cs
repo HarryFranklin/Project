@@ -14,14 +14,6 @@ public class UIManager : MonoBehaviour
     public Button comparisonTabButton;
     public Color activeTabColour;
     public Color inactiveTabColour;
-    
-    [Header("Simulation Controls")]
-    public Button nextPolicyButton;
-    public Button resetButton;
-
-    [Header("Comparison Controls")]
-    public Button optionAButton;
-    public Button optionBButton;
 
     [Header("Panels")]
     public GameObject policyInfoPanel;
@@ -51,91 +43,61 @@ public class UIManager : MonoBehaviour
     public Toggle ghostModeToggle;
     public Toggle arrowModeToggle;
 
-    // Determine the entire state of the UI
+    // State
     private bool _isPolicyTabActive = true; 
     private bool _isRulesPopupOpen = false;
-
-    private Policy _currentPolicy; // Data cache
+    private Policy _currentPolicy; 
 
     void Start()
     {
         InitialiseDropdowns();
 
-        // 1. Navigation Buttons (Change State)
+        // 1. Navigation Buttons
         if (policyTabButton) policyTabButton.onClick.AddListener(() => SetTab(true));
         if (comparisonTabButton) comparisonTabButton.onClick.AddListener(() => SetTab(false));
         if (viewRulesButton) viewRulesButton.onClick.AddListener(ToggleRules);
 
-        // 2. Action Buttons (Call Logic)
-        if (nextPolicyButton) nextPolicyButton.onClick.AddListener(() => simulationManager.NextPolicy());
-        if (resetButton) resetButton.onClick.AddListener(OnResetClicked);
-        if (optionAButton) optionAButton.onClick.AddListener(() => simulationManager.PreviewOptionA());
-        if (optionBButton) optionBButton.onClick.AddListener(() => simulationManager.PreviewOptionB());
-
-        // 2A. Grab Toggle Modes
+        // 2. Visual Toggles
         if (ghostModeToggle) ghostModeToggle.onValueChanged.AddListener(OnGhostToggleChanged);
         if (arrowModeToggle) arrowModeToggle.onValueChanged.AddListener((val) => simulationManager.SetArrowMode(val));
 
-        // 3. Initial Draw
         RefreshAllVisuals();
     }
 
-    // --- STATE CHANGERS ---
+    // --- VISUAL LOGIC ONLY ---
 
     void SetTab(bool isPolicyTab)
     {
         _isPolicyTabActive = isPolicyTab;
-        _isRulesPopupOpen = false; // Always close rules when switching tabs
+        _isRulesPopupOpen = false; 
         RefreshAllVisuals();
     }
 
     void ToggleRules()
     {
-        _isRulesPopupOpen = !_isRulesPopupOpen; // Flip state
-        
-        // If we just opened rules, make sure text is up to date
+        _isRulesPopupOpen = !_isRulesPopupOpen;
         if (_isRulesPopupOpen) UpdateRulesText(_currentPolicy);
-        
         RefreshAllVisuals();
     }
 
-    // Reset Button
-    void OnResetClicked()
-    {
-        simulationManager.ResetToDefault();
-        if (xAxisDropdown) xAxisDropdown.value = (int)simulationManager.xAxis;
-        if (yAxisDropdown) yAxisDropdown.value = (int)simulationManager.yAxis;
-        if (faceModeDropdown) faceModeDropdown.value = (int)simulationManager.faceMode;
-    }
-
-    // Ghost Toggle
     void OnGhostToggleChanged(bool isOn) 
     {
         simulationManager.SetGhostMode(isOn);
     }
 
-    // This function enforces the state variables on the Scene.
     void RefreshAllVisuals()
     {
-        // 1. Determine Visibility
-        // Rules override everything else.
         bool showRules = _isRulesPopupOpen;
         bool showPolicy = !_isRulesPopupOpen && _isPolicyTabActive;
         bool showCompare = !_isRulesPopupOpen && !_isPolicyTabActive;
 
-        // 2. Apply Visibility to Panels
         if (rulesPopupPanel) rulesPopupPanel.SetActive(showRules);
         if (policyInfoPanel) policyInfoPanel.SetActive(showPolicy);
         if (comparisonPanel) comparisonPanel.SetActive(showCompare);
 
-        // 3. Update Tab Colors (Tabs always show which one is "underneath", even if Rules are open)
-        if (policyTabButton) 
-             policyTabButton.GetComponent<Image>().color = _isPolicyTabActive ? activeTabColour : inactiveTabColour;
-        
-        if (comparisonTabButton) 
-             comparisonTabButton.GetComponent<Image>().color = !_isPolicyTabActive ? activeTabColour : inactiveTabColour;
+        if (policyTabButton) policyTabButton.GetComponent<Image>().color = _isPolicyTabActive ? activeTabColour : inactiveTabColour;
+        if (comparisonTabButton) comparisonTabButton.GetComponent<Image>().color = !_isPolicyTabActive ? activeTabColour : inactiveTabColour;
 
-        // 4. Update "Rules" Button Text
         if (viewRulesButton)
         {
             var txt = viewRulesButton.GetComponentInChildren<TMP_Text>();
@@ -148,16 +110,13 @@ public class UIManager : MonoBehaviour
     public void UpdatePolicyInfo(Policy p)
     {
         _currentPolicy = p;
-        UpdateResetButtonVisuals(p);
-
-        // If rules are open while data changes (unlikely but possible), refresh text
         if (_isRulesPopupOpen) UpdateRulesText(p);
 
         if (p == null)
         {
-            if (policyTitleText) policyTitleText.text = "<b>Default (2022-2023)</b>";
-            if (policyDescText) policyDescText.text = "The current distribution of life satisfaction in the UK based on ONS data.";
-            if (policyStatsText) policyStatsText.text = "<b>Base:</b> ONS 2022-2023 Data\n<b>Impact:</b> None";
+            if (policyTitleText) policyTitleText.text = "<b>No Policy Active</b>";
+            if (policyDescText) policyDescText.text = "The simulation is currently showing the baseline state.";
+            if (policyStatsText) policyStatsText.text = "";
         }
         else
         {
@@ -172,39 +131,12 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void UpdateComparisonInfo(string pName, double baseSoc, double currSoc, double basePers, double currPers, int happyCount, int totalPop)
+    // Helper to format text green/red
+    string FormatVal(float val)
     {
-        if (comparisonSubtitleText) comparisonSubtitleText.text = $"Default vs. {pName}";
-        
-        if (comparisonBodyText)
-        {
-            float avgSocBase = (float)(baseSoc / totalPop);
-            float avgSocCurr = (float)(currSoc / totalPop);
-            float diffSoc = avgSocCurr - avgSocBase;
-            float avgPersBase = (float)(basePers / totalPop);
-            float avgPersCurr = (float)(currPers / totalPop);
-            float diffPers = avgPersCurr - avgPersBase;
-
-            string ColorDiff(float val)
-            {
-                string s = val.ToString("F3");
-                if (val > 0.001f) return $"<color=green>+{s}</color>";
-                if (val < -0.001f) return $"<color=red>{s}</color>";
-                return s;
-            }
-
-            string text = "";
-            float approval = (float)happyCount / totalPop * 100f;
-            text += $"<b>Public Approval:</b> {approval:F1}%\n\n";
-            text += "<b>Societal Fairness:</b>\n";
-            text += $"Current: {avgSocCurr:F3} ({ColorDiff(diffSoc)})\n";
-            text += $"Default: {avgSocBase:F3}\n\n";
-            text += "<b>Avg Personal Wellbeing:</b>\n";
-            text += $"Current: {avgPersCurr:F3} ({ColorDiff(diffPers)})\n";
-            text += $"Default: {avgPersBase:F3}";
-
-            comparisonBodyText.text = text;
-        }
+        if (val > 0.001f) return $"<color=green>+{val:0.##}</color>";
+        if (val < -0.001f) return $"<color=red>{val:0.##}</color>";
+        return "0";
     }
 
     void UpdateRulesText(Policy p)
@@ -212,12 +144,11 @@ public class UIManager : MonoBehaviour
         if (p == null)
         {
             if (rulesTitleText) rulesTitleText.text = "Default State";
-            if (rulesTextBody) rulesTextBody.text = "No policy active.\n\nStatus quo (ONS Data).";
+            if (rulesTextBody) rulesTextBody.text = "No policy active.";
             return;
         }
 
         if (rulesTitleText) rulesTitleText.text = p.policyName;
-
         if (!rulesTextBody) return;
 
         string content = "";
@@ -238,41 +169,19 @@ public class UIManager : MonoBehaviour
                 content += $"   • <color=#FFD700>Effect:</color> {FormatVal(rule.impact)}\n\n";
             }
         }
-        else
-        {
-            content += "<i>No specific targeting rules defined.</i>";
-        }
         rulesTextBody.text = content;
-    }
-
-    // --- HELPERS ---
-
-    string FormatVal(float val)
-    {
-        if (val > 0.001f) return $"<color=green>+{val:0.##}</color>";
-        if (val < -0.001f) return $"<color=red>{val:0.##}</color>";
-        return "0";
-    }
-
-    void UpdateResetButtonVisuals(Policy activePolicy)
-    {
-        if (resetButton == null) return;
-        var textComp = resetButton.GetComponentInChildren<TMP_Text>();
-        if (textComp) textComp.fontStyle = (activePolicy == null) ? FontStyles.Normal : FontStyles.Italic;
     }
 
     public void UpdateHoverInfo(string info)
     {
-        // Don't show hover text if Rules are covering everything
         if (_isRulesPopupOpen) return;
-
         if (_isPolicyTabActive && policyStatsText) policyStatsText.text = info;
         else if (!_isPolicyTabActive && comparisonBodyText) comparisonBodyText.text = info;
     }
 
+    // --- DROPDOWNS ---
     void InitialiseDropdowns()
     {
-        // 1. X Axis
         if (xAxisDropdown)
         {
             xAxisDropdown.ClearOptions();
@@ -281,7 +190,6 @@ public class UIManager : MonoBehaviour
             xAxisDropdown.onValueChanged.AddListener((i) => simulationManager.SetAxisVariables((AxisVariable)i, simulationManager.yAxis));
         }
 
-        // 2. Y Axis
         if (yAxisDropdown)
         {
             yAxisDropdown.ClearOptions();
@@ -290,7 +198,6 @@ public class UIManager : MonoBehaviour
             yAxisDropdown.onValueChanged.AddListener((i) => simulationManager.SetAxisVariables(simulationManager.xAxis, (AxisVariable)i));
         }
 
-        // 3. Z Axis (Faces) - NEW
         if (faceModeDropdown)
         {
             faceModeDropdown.ClearOptions();
@@ -299,7 +206,4 @@ public class UIManager : MonoBehaviour
             faceModeDropdown.onValueChanged.AddListener((i) => simulationManager.SetFaceMode((FaceMode)i));
         }
     }
-
-    public void OnXAxisChanged(int index) { simulationManager.SetAxisVariables((AxisVariable)index, simulationManager.yAxis); }
-    public void OnYAxisChanged(int index) { simulationManager.SetAxisVariables(simulationManager.xAxis, (AxisVariable)index); }
 }
