@@ -1052,7 +1052,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: -496.39502, y: 460}
+  m_AnchoredPosition: {x: -750, y: 460}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &243880428
@@ -1205,12 +1205,18 @@ MonoBehaviour:
   currentPower: 0
   isGameActive: 1
   allPoliciesPool:
-  - {fileID: 11400000, guid: 595bbe3d4d1f6064a9cb4ed14da49a80, type: 2}
-  - {fileID: 11400000, guid: 3759a36b885055648afd05e0304520b9, type: 2}
-  - {fileID: 11400000, guid: fb2038974113c1c4ab5023a575cbb4be, type: 2}
-  - {fileID: 11400000, guid: 426adc9316cc0f747a209e126457dfdb, type: 2}
-  - {fileID: 11400000, guid: 1f3c286d4ea6699458fbc326e4f23c5a, type: 2}
-  - {fileID: 11400000, guid: dbf90bdea1f171e4eb175dad80c98438, type: 2}
+  - {fileID: 11400000, guid: 7931d30b49f2b9e4e8628493b1a2e3ee, type: 2}
+  - {fileID: 11400000, guid: 75e92de54da39f04a9d08ec4f5fb1278, type: 2}
+  - {fileID: 11400000, guid: 58b1da14cfa40da4095a2f7598fb98a2, type: 2}
+  - {fileID: 11400000, guid: a46dfbafb59836244b290fc1d7910d2d, type: 2}
+  - {fileID: 11400000, guid: a062b17eb9dec324db56e40117ef801d, type: 2}
+  - {fileID: 11400000, guid: ef2e313111e6c4149935e10f32eadd68, type: 2}
+  - {fileID: 11400000, guid: 9d47f273986a9a34e9213145baf63bc4, type: 2}
+  - {fileID: 11400000, guid: 9a8043efc27472e4a9bbef21c850b9f0, type: 2}
+  - {fileID: 11400000, guid: 9dc3e0cabccec9a4a805325f6f1cd489, type: 2}
+  - {fileID: 11400000, guid: 60db6b7e9eb84474998bdf4285acfc6c, type: 2}
+  - {fileID: 11400000, guid: e0edd26b090288e4bb38ded8bb8f9af9, type: 2}
+  - {fileID: 11400000, guid: ef50123f5ca541049a6bbfa6beae0fb7, type: 2}
   simManager: {fileID: 1862640734}
   turnText: {fileID: 243880428}
   powerText: {fileID: 1517942168}
@@ -7020,7 +7026,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: -267.60504, y: 460}
+  m_AnchoredPosition: {x: -550, y: 460}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1517942168
@@ -8803,8 +8809,8 @@ MonoBehaviour:
   visuals: {fileID: 1861122960}
   uiManager: {fileID: 1137985465}
   dataReader: {fileID: 417024558}
-  xAxis: 0
-  yAxis: 2
+  xAxis: 4
+  yAxis: 5
   faceMode: 0
 --- !u!4 &1862640735
 Transform:

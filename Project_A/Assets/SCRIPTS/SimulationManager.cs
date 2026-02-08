@@ -56,8 +56,19 @@ public class SimulationManager : MonoBehaviour
     public void ApplyPolicyEffect(Policy p)
     {
         ActivePolicy = p;
-        // The Policy class logic calculates the new LS array
-        CurrentLS = p.ApplyPolicy(PopulationList.ToArray());
+
+        // 1. Calculate the new state
+        float[] newValues = p.ApplyPolicy(PopulationList.ToArray());
+        
+        // 2. Update the Visual Array
+        CurrentLS = newValues;
+
+        // 3: Commit these changes to the People
+        // This ensures next turn's preview starts from THIS turn's result.
+        for (int i = 0; i < PopulationList.Count; i++)
+        {
+            PopulationList[i].currentLS = CurrentLS[i];
+        }
         
         UpdateSimulation();
     }
@@ -66,6 +77,7 @@ public class SimulationManager : MonoBehaviour
 
     void UpdateSimulation()
     {
+        // 1. Update Visuals (Dots/Faces) using Real Data
         if (visuals != null)
         {
             visuals.UpdateDisplay(
@@ -79,8 +91,8 @@ public class SimulationManager : MonoBehaviour
             );
         }
         
-        // Update the Graph UI (Hover text, comparisons)
-        if (uiManager) uiManager.UpdatePolicyInfo(ActivePolicy);
+        // 2. Update UI Text (Stats) using Real Data
+        CalculateAndRefreshUI(CurrentLS, ActivePolicy);
     }
 
     // --- METRIC HELPERS ---
@@ -101,6 +113,95 @@ public class SimulationManager : MonoBehaviour
             totalFairness += WelfareMetrics.EvaluateDistribution(CurrentLS, PopulationList[i].societalUtilities);
         }
         return (float)(totalFairness / PopulationList.Count);
+    }
+
+    // --- PREVIEW LOGIC ---
+    public void PreviewPolicy(Policy p)
+    {
+        // 1. Calculate hypothetical future
+        float[] tempLS = p.ApplyPolicy(PopulationList.ToArray());
+
+        // 2. Update Visuals using temp data
+        if (visuals != null)
+        {
+            visuals.UpdateDisplay(
+                PopulationList.ToArray(),
+                tempLS,         // <--- Moving the dots
+                BaselineLS,
+                p,
+                xAxis,
+                yAxis,
+                faceMode
+            );
+        }
+
+        // 3. Update UI Text using temp data
+        // This fixes the issue: Now the text stats will calculate based on tempLS
+        CalculateAndRefreshUI(tempLS, p);
+    }
+
+    public void StopPreview()
+    {
+        // Revert everything to reality
+        UpdateSimulation();
+    }
+
+    // We pass the LS array in as an argument so we can pass 'tempLS' or 'CurrentLS'
+    private void CalculateAndRefreshUI(float[] targetLS, Policy policyToDisplay)
+    {
+        if (!uiManager) return;
+
+        // Update the Static Description (Name, Cost, Rules)
+        uiManager.UpdatePolicyInfo(policyToDisplay);
+
+        // Calculate the Dynamic Stats (Fairness, Approval)
+        int count = PopulationList.Count;
+        double totalBaseSocial = 0; 
+        double totalCurrSocial = 0;
+        double totalBasePersonal = 0; 
+        double totalCurrPersonal = 0;
+        int happyCount = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            Respondent r = PopulationList[i];
+            float cLS = targetLS[i];       // <--- Using the argument (Temp or Real)
+            float bLS = BaselineLS[i];     // Always comparing against Game Start
+
+            // Calculate Utilities
+            float uSelfCurr = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
+            float uSelfBase = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
+            float uSocCurr = WelfareMetrics.EvaluateDistribution(targetLS, r.societalUtilities);
+            float uSocBase = WelfareMetrics.EvaluateDistribution(BaselineLS, r.societalUtilities);
+
+            // Accumulate
+            totalBaseSocial += uSocBase;
+            totalCurrSocial += uSocCurr;
+            totalBasePersonal += uSelfBase;
+            totalCurrPersonal += uSelfCurr;
+
+            // Simple Approval Logic (Example: Happy if Fairness improved)
+            // You can make this complex later (e.g., Happy if LS > 6 OR Fairness > +0.1)
+            bool isHappy = false;
+            if (cLS > -0.9f) // If alive
+            {
+                if (uSocCurr > uSocBase + 0.01f) isHappy = true;
+            }
+            if (isHappy) happyCount++;
+        }
+
+        // Send to UI
+        string pName = policyToDisplay != null ? policyToDisplay.policyName : "Default";
+        
+        uiManager.UpdateComparisonInfo(
+            pName, 
+            totalBaseSocial, 
+            totalCurrSocial, 
+            totalBasePersonal, 
+            totalCurrPersonal, 
+            happyCount, 
+            count
+        );
     }
     
     // --- VISUAL CONTROLS (Passthrough) ---

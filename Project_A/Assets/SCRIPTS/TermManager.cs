@@ -60,29 +60,40 @@ public class TermManager : MonoBehaviour
     {
         _currentHand.Clear();
         
-        // Shuffle pool and take 3
         var shuffled = allPoliciesPool.OrderBy(x => Random.value).ToList();
         int count = Mathf.Min(3, shuffled.Count);
 
         for (int i = 0; i < count; i++)
         {
-            _currentHand.Add(shuffled[i]);
+            Policy p = shuffled[i];
+            _currentHand.Add(p);
             
-            // Update the Buttons
             if (i < choiceButtons.Length)
             {
-                Policy p = shuffled[i];
-                // Access the text inside the button to show name & cost
-                TMP_Text btnText = choiceButtons[i].GetComponentInChildren<TMP_Text>();
+                Button btn = choiceButtons[i];
+
+                // 1. Setup Text
+                TMP_Text btnText = btn.GetComponentInChildren<TMP_Text>();
                 if (btnText) btnText.text = $"{p.policyName}\n<size=80%>(Cost: {p.politicalCost})</size>";
                 
-                // Add Listener (Clear old ones first)
-                choiceButtons[i].onClick.RemoveAllListeners();
-                choiceButtons[i].onClick.AddListener(() => OnPolicyClicked(p));
-                choiceButtons[i].interactable = true;
+                // 2. Setup Click (Select)
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => OnPolicyClicked(p));
+                btn.interactable = true;
+
+                // 3. Setup Hover (Preview)
+                // Check if the script exists, add it if not
+                ButtonHoverHandler hover = btn.GetComponent<ButtonHoverHandler>();
+                if (hover == null) hover = btn.gameObject.AddComponent<ButtonHoverHandler>();
+
+                // Assign the data
+                hover.policy = p;
+                hover.onHover = (pol) => simManager.PreviewPolicy(pol);
+                hover.onExit = () => simManager.StopPreview();
             }
         }
     }
+    
 
     void OnPolicyClicked(Policy p)
     {

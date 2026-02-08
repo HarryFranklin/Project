@@ -139,6 +139,34 @@ public class UIManager : MonoBehaviour
         return "0";
     }
 
+    public void UpdateComparisonInfo(string pName, double baseSoc, double currSoc, double basePers, double currPers, int happyCount, int totalPop)
+    {
+        if (comparisonSubtitleText) comparisonSubtitleText.text = $"Start vs. {pName}";
+        
+        if (comparisonBodyText)
+        {
+            float avgSocBase = (float)(baseSoc / totalPop);
+            float avgSocCurr = (float)(currSoc / totalPop);
+            float diffSoc = avgSocCurr - avgSocBase;
+            
+            float avgPersBase = (float)(basePers / totalPop);
+            float avgPersCurr = (float)(currPers / totalPop);
+            float diffPers = avgPersCurr - avgPersBase;
+
+            string text = "";
+            float approval = (float)happyCount / totalPop * 100f;
+            text += $"<b>Public Approval:</b> {approval:F1}%\n\n";
+            text += "<b>Societal Fairness:</b>\n";
+            text += $"Current: {avgSocCurr:F3} ({FormatVal(diffSoc)})\n";
+            text += $"Start: {avgSocBase:F3}\n\n";
+            text += "<b>Avg Personal Wellbeing:</b>\n";
+            text += $"Current: {avgPersCurr:F3} ({FormatVal(diffPers)})\n";
+            text += $"Start: {avgPersBase:F3}";
+
+            comparisonBodyText.text = text;
+        }
+    }
+
     void UpdateRulesText(Policy p)
     {
         if (p == null)
