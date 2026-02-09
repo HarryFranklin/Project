@@ -1207,11 +1207,21 @@ MonoBehaviour:
   currentPower: 0
   isGameActive: 1
   allPoliciesPool:
+  - {fileID: 11400000, guid: 3c9eed3b0cf2a3d4c933e145a00c2e48, type: 2}
   - {fileID: 11400000, guid: 7931d30b49f2b9e4e8628493b1a2e3ee, type: 2}
   - {fileID: 11400000, guid: 75e92de54da39f04a9d08ec4f5fb1278, type: 2}
+  - {fileID: 11400000, guid: 753fecc01375d5b408f0b8c14cc6ac76, type: 2}
+  - {fileID: 11400000, guid: c1464a3fb97c1cf4cabf0e8ea7da4498, type: 2}
   - {fileID: 11400000, guid: 58b1da14cfa40da4095a2f7598fb98a2, type: 2}
+  - {fileID: 11400000, guid: e658abcb1da8df940a9bdc5e4da2eb6c, type: 2}
+  - {fileID: 11400000, guid: f553648458371e84199d814e8671bbdf, type: 2}
   - {fileID: 11400000, guid: a46dfbafb59836244b290fc1d7910d2d, type: 2}
+  - {fileID: 11400000, guid: fac6a5781d70b664d9f9bb3f08c96865, type: 2}
+  - {fileID: 11400000, guid: 4ff82f70c61be4745be0c414766be3bd, type: 2}
   - {fileID: 11400000, guid: a062b17eb9dec324db56e40117ef801d, type: 2}
+  - {fileID: 11400000, guid: a53d5215237160b4aa4a663b86815f76, type: 2}
+  - {fileID: 11400000, guid: 6350e9f836001b5489182cbf38cee764, type: 2}
+  - {fileID: 11400000, guid: c7110e8682e3f0247a9758cd54aee6fb, type: 2}
   - {fileID: 11400000, guid: ef2e313111e6c4149935e10f32eadd68, type: 2}
   - {fileID: 11400000, guid: 9d47f273986a9a34e9213145baf63bc4, type: 2}
   - {fileID: 11400000, guid: 9a8043efc27472e4a9bbef21c850b9f0, type: 2}

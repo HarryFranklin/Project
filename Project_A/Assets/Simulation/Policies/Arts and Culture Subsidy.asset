@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
+  m_Name: Arts and Culture Subsidy
+  m_EditorClassIdentifier: Assembly-CSharp::Policy
+  policyName: Arts and Culture Subsidy
+  description: Funding for museums, galleries, and theatres. Seen as a luxury by
+    some, essential by others.
+  politicalCost: 35
+  baseChangeRich: 0.4
+  baseChangeMiddle: 0.2
+  baseChangePoor: 0.1
+  richThreshold: 8
+  poorThreshold: 4
+  specificRules:
+  - note: Cultural Enrichment
+    minLS: 7
+    maxLS: 10
+    affectEveryone: 1
+    proportion: 1
+    impact: 0.5

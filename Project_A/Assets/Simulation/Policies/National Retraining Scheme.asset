@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
+  m_Name: National Retraining Scheme
+  m_EditorClassIdentifier: Assembly-CSharp::Policy
+  policyName: National Retraining Scheme
+  description: Funding for adults to learn new trades. Targeted at the unemployed
+    and those in declining industries.
+  politicalCost: 35
+  baseChangeRich: -0.1
+  baseChangeMiddle: -0.1
+  baseChangePoor: 0.5
+  richThreshold: 8
+  poorThreshold: 4
+  specificRules:
+  - note: New Opportunities
+    minLS: 2
+    maxLS: 4.5
+    affectEveryone: 1
+    proportion: 0.6
+    impact: 1

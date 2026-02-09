@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
+  m_Name: Pothole Repair Fund
+  m_EditorClassIdentifier: Assembly-CSharp::Policy
+  policyName: Pothole Repair Fund
+  description: A focused drive to fix roads. Improves daily commute but viewed as
+    a bare minimum expectation.
+  politicalCost: 18
+  baseChangeRich: 0.1
+  baseChangeMiddle: 0.2
+  baseChangePoor: 0
+  richThreshold: 8
+  poorThreshold: 4
+  specificRules:
+  - note: Commuter Relief
+    minLS: 5
+    maxLS: 9
+    affectEveryone: 0
+    proportion: 0.5
+    impact: 0.2

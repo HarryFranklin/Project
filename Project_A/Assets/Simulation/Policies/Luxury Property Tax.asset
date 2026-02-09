@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 620596d779f4aed4c87fe9bd3ff6bc17, type: 3}
+  m_Name: Luxury Property Tax
+  m_EditorClassIdentifier: Assembly-CSharp::Policy
+  policyName: Luxury Property Tax
+  description: A heavy levy on second homes and mansions. Popular with the majority,
+    hated by donors.
+  politicalCost: 50
+  baseChangeRich: -1.5
+  baseChangeMiddle: 0.3
+  baseChangePoor: 0.2
+  richThreshold: 8
+  poorThreshold: 4
+  specificRules:
+  - note: Everyone Needs a Home
+    minLS: 0
+    maxLS: 5
+    affectEveryone: 1
+    proportion: 1
+    impact: 0.3
