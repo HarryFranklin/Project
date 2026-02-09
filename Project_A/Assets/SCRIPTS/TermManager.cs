@@ -76,6 +76,7 @@ public class TermManager : MonoBehaviour
     }
 
     // 2. Policy Drafting Function
+    // 2. Policy Drafting Function
     void DraftPolicies()
     {
         _currentHand.Clear();
@@ -88,15 +89,14 @@ public class TermManager : MonoBehaviour
         var others = shuffledPool.Where(p => p.politicalCost > currentPower).ToList();
 
         // B. Select 3 Cards
-        // Rule: At least 2 must be affordable if possible
         
-        // Slot 1: Must be affordable
+        // Slot 1: Must be affordable (Fallback to expensive if absolutely nothing else)
         if (affordable.Count > 0)
         {
             _currentHand.Add(affordable[0]);
             affordable.RemoveAt(0);
         }
-        else if (others.Count > 0) // Emergency fallback
+        else if (others.Count > 0)
         {
             _currentHand.Add(others[0]);
             others.RemoveAt(0);
@@ -114,16 +114,22 @@ public class TermManager : MonoBehaviour
             others.RemoveAt(0);
         }
 
-        // Slot 3: Wildcard (Can be expensive or cheap)
-        // Combine remaining lists and pick one
-        var remaining = affordable.Concat(others).OrderBy(x => Random.value).ToList();
+        // Slot 3: Wildcard (The "Temptation" Slot)
+        // Rule: Can be affordable OR slightly expensive (within +10 of current power)
+        
+        // 1. Filter the remaining expensive cards to only those within reach
+        var closeReachOptions = others.Where(p => p.politicalCost <= currentPower + 10).ToList();
+        
+        // 2. Combine with remaining affordable cards
+        var remaining = affordable.Concat(closeReachOptions).OrderBy(x => Random.value).ToList();
+        
         if (remaining.Count > 0)
         {
             _currentHand.Add(remaining[0]);
         }
 
         // C. Shuffle the Hand
-        // (So the "Expensive" card isn't always the 3rd)
+        // (So the "Expensive" card isn't always the 3rd button)
         _currentHand = _currentHand.OrderBy(x => Random.value).ToList();
 
         // D. Assign to Buttons
