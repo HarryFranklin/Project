@@ -27,8 +27,8 @@ RectTransform:
   m_GameObject: {fileID: 401481417264656046}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.74999994, y: 0.74999994, z: 0.74999994}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 3715069072972246900}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -139,8 +139,8 @@ RectTransform:
   m_GameObject: {fileID: 1431544376367230793}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.74999994, y: 0.74999994, z: 0.74999994}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 4427938392346926813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -214,8 +214,8 @@ RectTransform:
   m_GameObject: {fileID: 2946223642914814957}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.74999994, y: 0.74999994, z: 0.74999994}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 3715069072972246900}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -338,7 +338,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 50, y: 50}
+  m_SizeDelta: {x: 50, y: 5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6786359493250540877
 CanvasRenderer:
@@ -415,8 +415,8 @@ RectTransform:
   m_GameObject: {fileID: 4779819532040852886}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.74999994, y: 0.74999994, z: 0.74999994}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 4427938392346926813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -505,11 +505,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7909523893552006872, guid: 60a651448a46b8f49b9dd4506775c136, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 50
+      value: 33.333332
       objectReference: {fileID: 0}
     - target: {fileID: 7909523893552006872, guid: 60a651448a46b8f49b9dd4506775c136, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 25
+      value: 16.666666
       objectReference: {fileID: 0}
     - target: {fileID: 7909523893552006872, guid: 60a651448a46b8f49b9dd4506775c136, type: 3}
       propertyPath: m_LocalPosition.x
