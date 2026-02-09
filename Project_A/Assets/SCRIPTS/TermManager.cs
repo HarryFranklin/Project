@@ -8,7 +8,11 @@ public class TermManager : MonoBehaviour
 {
     [Header("Game Rules")]
     public int maxTurns = 12; // 3 Years (4 quarters)
-    public int powerPerTurn = 50;
+    
+    [Header("Power Curve Settings")]
+    public int basePower = 10;       // Starting power
+    public int powerPerTurn = 5;     // How much it goes up each turn (on average)
+    public int powerVariance = 3;    // Random +/- a bit (e.g. +/- 3)
 
     [Header("State")]
     public int currentTurn = 1;
@@ -21,12 +25,11 @@ public class TermManager : MonoBehaviour
     [Header("References")]
     public SimulationManager simManager;
     
-    // --- UI REFERENCES (Drag these in from Inspector) ---
     [Header("UI Connections")]
-    public TMP_Text turnText;        // "Turn 1/12"
-    public TMP_Text powerText;       // "Power: 50"
-    public Button[] choiceButtons;   // The 3 buttons to select policies
-    public GameObject gameOverPanel; // Panel to show at end
+    public TMP_Text turnText;        
+    public TMP_Text powerText;       
+    public Button[] choiceButtons;   
+    public GameObject gameOverPanel; 
     public TMP_Text gameOverText;
 
     // Internal State
@@ -35,9 +38,9 @@ public class TermManager : MonoBehaviour
 
     void Start()
     {
-        // 1. Init Database Session
+        // 1. Init Database
         _sessionData = new DatabaseManager.GameSessionData();
-        _sessionData.playerID = DatabaseManager.Instance ? "Player" : "Offline"; // Safety check
+        _sessionData.playerID = DatabaseManager.Instance ? "Player" : "Offline";
         _sessionData.timestamp = System.DateTime.Now.ToString();
 
         // 2. Start Game
@@ -48,81 +51,144 @@ public class TermManager : MonoBehaviour
     {
         if (!isGameActive) return;
 
-        // Reset Power
-        currentPower = powerPerTurn;
+        // Calc power
+        currentPower = GetPowerForTurn(currentTurn);
         UpdateResourceUI();
 
-        // Draft 3 Policies
+        // Gather policy options
         DraftPolicies();
     }
 
+    // 1. The Power Curve Function
+    int GetPowerForTurn(int turn)
+    {
+        // Formula: Base + (Turn * Scale) + Random Variance
+        // Turn 1 (index 0 for math): 10 + 0 + Rnd
+        // Turn 2: 10 + 5 + Rnd...
+        
+        int linearGrowth = (turn - 1) * powerPerTurn;
+        int variance = Random.Range(-powerVariance, powerVariance + 1);
+        
+        int calculatedPower = basePower + linearGrowth + variance;
+
+        // Safety: Never let power be negative
+        return Mathf.Max(5, calculatedPower);
+    }
+
+    // 2. Policy Drafting Function
     void DraftPolicies()
     {
         _currentHand.Clear();
         
-        var shuffled = allPoliciesPool.OrderBy(x => Random.value).ToList();
-        int count = Mathf.Min(3, shuffled.Count);
+        // A. Separate policies into "Can Afford" and "Too Expensive"
+        // We shuffle them first so we don't always pick the same 'cheap' ones
+        var shuffledPool = allPoliciesPool.OrderBy(x => Random.value).ToList();
+        
+        var affordable = shuffledPool.Where(p => p.politicalCost <= currentPower).ToList();
+        var others = shuffledPool.Where(p => p.politicalCost > currentPower).ToList();
 
-        for (int i = 0; i < count; i++)
+        // B. Select 3 Cards
+        // Rule: At least 2 must be affordable if possible
+        
+        // Slot 1: Must be affordable
+        if (affordable.Count > 0)
         {
-            Policy p = shuffled[i];
-            _currentHand.Add(p);
-            
-            if (i < choiceButtons.Length)
+            _currentHand.Add(affordable[0]);
+            affordable.RemoveAt(0);
+        }
+        else if (others.Count > 0) // Emergency fallback
+        {
+            _currentHand.Add(others[0]);
+            others.RemoveAt(0);
+        }
+
+        // Slot 2: Must be affordable
+        if (affordable.Count > 0)
+        {
+            _currentHand.Add(affordable[0]);
+            affordable.RemoveAt(0);
+        }
+        else if (others.Count > 0)
+        {
+            _currentHand.Add(others[0]);
+            others.RemoveAt(0);
+        }
+
+        // Slot 3: Wildcard (Can be expensive or cheap)
+        // Combine remaining lists and pick one
+        var remaining = affordable.Concat(others).OrderBy(x => Random.value).ToList();
+        if (remaining.Count > 0)
+        {
+            _currentHand.Add(remaining[0]);
+        }
+
+        // C. Shuffle the Hand
+        // (So the "Expensive" card isn't always the 3rd)
+        _currentHand = _currentHand.OrderBy(x => Random.value).ToList();
+
+        // D. Assign to Buttons
+        AssignPoliciesToUI();
+    }
+
+    void AssignPoliciesToUI()
+    {
+        for (int i = 0; i < choiceButtons.Length; i++)
+        {
+            if (i < _currentHand.Count)
             {
+                Policy p = _currentHand[i];
                 Button btn = choiceButtons[i];
 
-                // 1. Setup Text
+                // Text Setup
                 TMP_Text btnText = btn.GetComponentInChildren<TMP_Text>();
-                if (btnText) btnText.text = $"{p.policyName}\n<size=80%>(Cost: {p.politicalCost})</size>";
+            
+                // Colour for Cost text
+                string costColour = "red";
+                // string costColour = (p.politicalCost > currentPower) ? "red" : "white";
+                if (btnText) btnText.text = $"{p.policyName}\n<size=80%><color={costColour}>(Cost: {p.politicalCost})</color></size>";
                 
-                // 2. Setup Click (Select)
+                // Interaction Setup
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() => OnPolicyClicked(p));
-                btn.interactable = true;
+                
+                // If it's too expensive, you can see it but not click it (or click gives feedback)
+                btn.interactable = true; 
 
-                // 3. Setup Hover (Preview)
-                // Check if the script exists, add it if not
-                ButtonHoverHandler hover = btn.GetComponent<ButtonHoverHandler>();
+                // Hover Logic (Preview)
+                var hover = btn.GetComponent<ButtonHoverHandler>();
                 if (hover == null) hover = btn.gameObject.AddComponent<ButtonHoverHandler>();
-
-                // Assign the data
                 hover.policy = p;
                 hover.onHover = (pol) => simManager.PreviewPolicy(pol);
                 hover.onExit = () => simManager.StopPreview();
             }
+            else
+            {
+                // Hide unused buttons if we have less than 3 policies
+                choiceButtons[i].gameObject.SetActive(false);
+            }
         }
     }
-    
 
     void OnPolicyClicked(Policy p)
     {
         if (currentPower >= p.politicalCost)
         {
-            // 1. Pay Cost
+            // 1. Pay & Act
             currentPower -= p.politicalCost;
+            // Can change in future, depending on "use it or lose it" vs draining power, etc.
             
-            // 2. Execute Policy in Simulation
             simManager.ApplyPolicyEffect(p);
-
-            // 3. Log the Turn
             LogTurn(p);
 
-            // 4. Advance Turn
+            // 2. Next Turn
             currentTurn++;
-            if (currentTurn > maxTurns)
-            {
-                EndGame("Term Finished");
-            }
-            else
-            {
-                StartNewTurn();
-            }
+            if (currentTurn > maxTurns) EndGame("Term Finished");
+            else StartNewTurn();
         }
         else
         {
-            Debug.Log("Not enough power!");
-            // Optional: Shake button or show red text
+            Debug.Log("Too expensive!");
+            // Feedback: shake button? grey out?
         }
     }
 
@@ -133,7 +199,7 @@ public class TermManager : MonoBehaviour
         log.chosenPolicy = chosen.policyName;
         log.costPaid = chosen.politicalCost;
         log.availableOptions = _currentHand.Select(p => p.policyName).ToArray();
-        log.resultingFairness = simManager.GetCurrentSocietalFairness();
+        log.resultingFairness = simManager.GetCurrentSocietalFairness(); 
 
         _sessionData.turnHistory.Add(log);
     }
@@ -142,27 +208,23 @@ public class TermManager : MonoBehaviour
     {
         isGameActive = false;
         
-        // Final Metrics
         _sessionData.gameOverReason = reason;
         _sessionData.totalTurnsPlayed = currentTurn;
-        _sessionData.endAverageLS = simManager.GetCurrentAvgLS();
-        _sessionData.endSocietalFairness = simManager.GetCurrentSocietalFairness();
-
-        // Upload
+        // _sessionData.endAverageLS = simManager.GetCurrentAvgLS();
+        
         if (DatabaseManager.Instance) 
             DatabaseManager.Instance.UploadGameResult(_sessionData);
 
-        // Show Game Over UI
         if (gameOverPanel) 
         {
             gameOverPanel.SetActive(true);
-            if (gameOverText) gameOverText.text = $"Term Ended.\nAvg Fairness: {_sessionData.endSocietalFairness:F2}";
+            if (gameOverText) gameOverText.text = "Term Ended.";
         }
     }
 
     void UpdateResourceUI()
     {
         if (turnText) turnText.text = $"Turn {currentTurn}/{maxTurns}";
-        if (powerText) powerText.text = $"Power: {currentPower}";
+        if (powerText) powerText.text = $"Political Capital: {currentPower}";
     }
 }
