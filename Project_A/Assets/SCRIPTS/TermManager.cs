@@ -34,6 +34,7 @@ public class TermManager : MonoBehaviour
 
     // Internal State
     private List<Policy> _currentHand = new List<Policy>();
+    private List<Policy> _policyDeck;
     private DatabaseManager.GameSessionData _sessionData;
 
     void Start()
@@ -43,7 +44,11 @@ public class TermManager : MonoBehaviour
         _sessionData.playerID = DatabaseManager.Instance ? "Player" : "Offline";
         _sessionData.timestamp = System.DateTime.Now.ToString();
 
-        // 2. Start Game
+        // 2. Create the Deck
+        // We copy the pool so we can remove items without deleting them from the Project
+        _policyDeck = new List<Policy>(allPoliciesPool);
+
+        // 3. Start Game
         StartNewTurn();
     }
 
@@ -59,42 +64,45 @@ public class TermManager : MonoBehaviour
         DraftPolicies();
     }
 
-    // 1. The Power Curve Function
+    // 1. Power Curve Function
     int GetPowerForTurn(int turn)
     {
-        // Formula: Base + (Turn * Scale) + Random Variance
-        // Turn 1 (index 0 for math): 10 + 0 + Rnd
-        // Turn 2: 10 + 5 + Rnd...
-        
         int linearGrowth = (turn - 1) * powerPerTurn;
         int variance = Random.Range(-powerVariance, powerVariance + 1);
-        
         int calculatedPower = basePower + linearGrowth + variance;
 
-        // Safety: Never let power be negative
         return Mathf.Max(5, calculatedPower);
     }
 
     // 2. Policy Drafting Function
-    // 2. Policy Drafting Function
     void DraftPolicies()
     {
         _currentHand.Clear();
+
+        // Safety: If deck is empty, stop.
+        if (_policyDeck.Count == 0)
+        {
+            Debug.Log("No policies left.");
+            AssignPoliciesToUI();
+            return;
+        }
+
+        // A. Shuffle the entire remaining deck
+        // This ensures random selection. We work with this temporary list to select cards.
+        var shuffledPool = _policyDeck.OrderBy(x => Random.value).ToList();
         
-        // A. Separate policies into "Can Afford" and "Too Expensive"
-        // We shuffle them first so we don't always pick the same 'cheap' ones
-        var shuffledPool = allPoliciesPool.OrderBy(x => Random.value).ToList();
-        
+        // B. Categorise (Affordable vs Expensive)
         var affordable = shuffledPool.Where(p => p.politicalCost <= currentPower).ToList();
         var others = shuffledPool.Where(p => p.politicalCost > currentPower).ToList();
 
-        // B. Select 3 Cards
-        
-        // Slot 1: Must be affordable (Fallback to expensive if absolutely nothing else)
+        // C. Fill the 3 Slots
+        // Logic: Try to get 2 Affordable + 1 Wildcard (Affordable or Close-Reach)
+
+        // Slot 1: Must be affordable
         if (affordable.Count > 0)
         {
             _currentHand.Add(affordable[0]);
-            affordable.RemoveAt(0);
+            affordable.RemoveAt(0); // Remove so we don't pick it again for Slot 2
         }
         else if (others.Count > 0)
         {
@@ -114,25 +122,27 @@ public class TermManager : MonoBehaviour
             others.RemoveAt(0);
         }
 
-        // Slot 3: Wildcard (The "Temptation" Slot)
-        // Rule: Can be affordable OR slightly expensive (within +10 of current power)
+        // Slot 3: Wildcard (Affordable or Expensive but within 10 of max)
+        // Filter 'others' to only show things within +10 cost
+        var closeReach = others.Where(p => p.politicalCost <= currentPower + 10).ToList();
         
-        // 1. Filter the remaining expensive cards to only those within reach
-        var closeReachOptions = others.Where(p => p.politicalCost <= currentPower + 10).ToList();
-        
-        // 2. Combine with remaining affordable cards
-        var remaining = affordable.Concat(closeReachOptions).OrderBy(x => Random.value).ToList();
-        
-        if (remaining.Count > 0)
+        // Combine remaining affordable + close reach
+        var wildcardPool = affordable.Concat(closeReach).OrderBy(x => Random.value).ToList();
+
+        if (wildcardPool.Count > 0)
         {
-            _currentHand.Add(remaining[0]);
+            _currentHand.Add(wildcardPool[0]);
+        }
+        else if (others.Count > 0) // Fallback: just show any expensive card if nothing else exists
+        {
+             _currentHand.Add(others[0]);
         }
 
-        // C. Shuffle the Hand
-        // (So the "Expensive" card isn't always the 3rd button)
+        // D. Shuffle the Hand (Visuals)
+        // We shuffle the final 3 cards so the "Expensive" one isn't always on the right button
         _currentHand = _currentHand.OrderBy(x => Random.value).ToList();
 
-        // D. Assign to Buttons
+        // E. Assign to Buttons
         AssignPoliciesToUI();
     }
 
@@ -142,12 +152,15 @@ public class TermManager : MonoBehaviour
         {
             if (i < _currentHand.Count)
             {
+                // Show Button
+                choiceButtons[i].gameObject.SetActive(true);
+
                 Policy p = _currentHand[i];
                 Button btn = choiceButtons[i];
 
                 // Text Setup
                 TMP_Text btnText = btn.GetComponentInChildren<TMP_Text>();
-            
+
                 // Colour for Cost text
                 string costColour = "red";
                 // string costColour = (p.politicalCost > currentPower) ? "red" : "white";
@@ -156,11 +169,9 @@ public class TermManager : MonoBehaviour
                 // Interaction Setup
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() => OnPolicyClicked(p));
-                
-                // If it's too expensive, you can see it but not click it (or click gives feedback)
                 btn.interactable = true; 
 
-                // Hover Logic (Preview)
+                // Hover Logic
                 var hover = btn.GetComponent<ButtonHoverHandler>();
                 if (hover == null) hover = btn.gameObject.AddComponent<ButtonHoverHandler>();
                 hover.policy = p;
@@ -169,7 +180,7 @@ public class TermManager : MonoBehaviour
             }
             else
             {
-                // Hide unused buttons if we have less than 3 policies
+                // Hide unused buttons (e.g. if we ran out of cards and only have 2 left)
                 choiceButtons[i].gameObject.SetActive(false);
             }
         }
@@ -181,12 +192,18 @@ public class TermManager : MonoBehaviour
         {
             // 1. Pay & Act
             currentPower -= p.politicalCost;
-            // Can change in future, depending on "use it or lose it" vs draining power, etc.
-            
             simManager.ApplyPolicyEffect(p);
+            
+            // 2. Remove from Deck (No duplicates)
+            if (_policyDeck.Contains(p))
+            {
+                _policyDeck.Remove(p);
+            }
+
+            // 3. Log
             LogTurn(p);
 
-            // 2. Next Turn
+            // 4. Next Turn
             currentTurn++;
             if (currentTurn > maxTurns) EndGame("Term Finished");
             else StartNewTurn();
@@ -194,7 +211,7 @@ public class TermManager : MonoBehaviour
         else
         {
             Debug.Log("Too expensive!");
-            // Feedback: shake button? grey out?
+            // Or shake button
         }
     }
 
@@ -216,7 +233,6 @@ public class TermManager : MonoBehaviour
         
         _sessionData.gameOverReason = reason;
         _sessionData.totalTurnsPlayed = currentTurn;
-        // _sessionData.endAverageLS = simManager.GetCurrentAvgLS();
         
         if (DatabaseManager.Instance) 
             DatabaseManager.Instance.UploadGameResult(_sessionData);
