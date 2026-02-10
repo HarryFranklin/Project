@@ -25,6 +25,8 @@ public class SimulationManager : MonoBehaviour
     public AxisVariable yAxis;
     public FaceMode faceMode = FaceMode.Split;
 
+    private bool _previewLocked = false;
+
     // --- INTERNAL DATA STATE ---
     public List<Respondent> PopulationList { get; private set; }
     public float[] BaselineLS { get; private set; }
@@ -36,11 +38,15 @@ public class SimulationManager : MonoBehaviour
     private AxisVariable _cachedY;
     private bool _hasGameStarted = false; // Tracks if we have left the boot state
 
-    void Start()
+    void Awake()
     {
         // 1. Apply Boot Defaults
         xAxis = bootXAxis;
         yAxis = bootYAxis;
+
+        _cachedX = bootXAxis;
+        _cachedY = bootYAxis;
+
         _hasGameStarted = false;
 
         // 2. Load Data
@@ -136,16 +142,32 @@ public class SimulationManager : MonoBehaviour
         CalculateAndRefreshUI(tempLS, p);
     }
 
+    public void SetPreviewLock(bool isLocked)
+    {
+        _previewLocked = isLocked;
+        // If unlocking, immediately clear the preview
+        if (!isLocked) StopPreview(); 
+    }
+
     public void StopPreview()
     {
+        // If locked, ignore the request to stop
+        if (_previewLocked) return;
+
+        // 1. Restore Axes
         xAxis = _cachedX;
         yAxis = _cachedY;
+
+        // 2. Revert visuals
         UpdateSimulation();
     }
 
     // --- INTERNAL UPDATES ---
     void UpdateSimulation()
     {
+        // Safety check
+        if (PopulationList == null || PopulationList.Count == 0) return;
+        
         if (visuals) visuals.UpdateDisplay(PopulationList.ToArray(), CurrentLS, BaselineLS, ActivePolicy, xAxis, yAxis, faceMode);
         CalculateAndRefreshUI(CurrentLS, ActivePolicy);
     }

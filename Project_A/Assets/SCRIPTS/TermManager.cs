@@ -6,21 +6,22 @@ using System.Linq;
 
 public class TermManager : MonoBehaviour
 {
+    public enum TurnState { Drafting, Locked }
+
     [Header("Game Rules")]
-    public int maxTurns = 12; // 3 Years (4 quarters)
-    
-    [Header("Power Curve Settings")]
-    public int basePower = 10;       // Starting power
-    public int powerPerTurn = 5;     // How much it goes up each turn (on average)
-    public int powerVariance = 3;    // Random +/- a bit (e.g. +/- 3)
+    public int maxTurns = 12; 
+    public int basePower = 10;       
+    public int powerPerTurn = 5;     
+    public int powerVariance = 3;    
 
     [Header("State")]
+    public TurnState currentState = TurnState.Drafting;
     public int currentTurn = 1;
     public int currentPower;
     public bool isGameActive = true;
 
     [Header("Data")]
-    public List<Policy> allPoliciesPool; // Drag all Policy objects here
+    public List<Policy> allPoliciesPool; 
 
     [Header("References")]
     public SimulationManager simManager;
@@ -32,23 +33,29 @@ public class TermManager : MonoBehaviour
     public GameObject gameOverPanel; 
     public TMP_Text gameOverText;
 
+    [Header("Confirmation UI")]
+    public GameObject confirmPanel;   // Drag your new "Confirm/Cancel" panel here
+    public Button confirmButton;
+    public Button cancelButton;
+
     // Internal State
     private List<Policy> _currentHand = new List<Policy>();
     private List<Policy> _policyDeck;
     private DatabaseManager.GameSessionData _sessionData;
+    private Policy _selectedPolicy; // The policy currently locked in
 
     void Start()
     {
-        // 1. Init Database
         _sessionData = new DatabaseManager.GameSessionData();
         _sessionData.playerID = DatabaseManager.Instance ? "Player" : "Offline";
         _sessionData.timestamp = System.DateTime.Now.ToString();
 
-        // 2. Create the Deck
-        // We copy the pool so we can remove items without deleting them from the Project
         _policyDeck = new List<Policy>(allPoliciesPool);
 
-        // 3. Start Game
+        if (confirmPanel) confirmPanel.SetActive(false);
+        if (confirmButton) confirmButton.onClick.AddListener(OnConfirmClicked);
+        if (cancelButton) cancelButton.onClick.AddListener(OnCancelClicked);
+
         StartNewTurn();
     }
 
@@ -56,93 +63,52 @@ public class TermManager : MonoBehaviour
     {
         if (!isGameActive) return;
 
+        // Reset State
+        currentState = TurnState.Drafting;
+        _selectedPolicy = null;
+        simManager.SetPreviewLock(false);
+        if (confirmPanel) confirmPanel.SetActive(false);
+
         // Calc power
         currentPower = GetPowerForTurn(currentTurn);
         UpdateResourceUI();
 
-        // Gather policy options
+        // Show Options
         DraftPolicies();
     }
 
-    // 1. Power Curve Function
     int GetPowerForTurn(int turn)
     {
         int linearGrowth = (turn - 1) * powerPerTurn;
         int variance = Random.Range(-powerVariance, powerVariance + 1);
         int calculatedPower = basePower + linearGrowth + variance;
-
         return Mathf.Max(5, calculatedPower);
     }
 
-    // 2. Policy Drafting Function
     void DraftPolicies()
     {
         _currentHand.Clear();
+        if (_policyDeck.Count == 0) { AssignPoliciesToUI(); return; }
 
-        // Safety: If deck is empty, stop.
-        if (_policyDeck.Count == 0)
-        {
-            Debug.Log("No policies left.");
-            AssignPoliciesToUI();
-            return;
-        }
-
-        // A. Shuffle the entire remaining deck
-        // This ensures random selection. We work with this temporary list to select cards.
         var shuffledPool = _policyDeck.OrderBy(x => Random.value).ToList();
-        
-        // B. Categorise (Affordable vs Expensive)
         var affordable = shuffledPool.Where(p => p.politicalCost <= currentPower).ToList();
         var others = shuffledPool.Where(p => p.politicalCost > currentPower).ToList();
 
-        // C. Fill the 3 Slots
-        // Logic: Try to get 2 Affordable + 1 Wildcard (Affordable or Close-Reach)
+        // 1. Affordable
+        if (affordable.Count > 0) { _currentHand.Add(affordable[0]); affordable.RemoveAt(0); }
+        else if (others.Count > 0) { _currentHand.Add(others[0]); others.RemoveAt(0); }
 
-        // Slot 1: Must be affordable
-        if (affordable.Count > 0)
-        {
-            _currentHand.Add(affordable[0]);
-            affordable.RemoveAt(0); // Remove so we don't pick it again for Slot 2
-        }
-        else if (others.Count > 0)
-        {
-            _currentHand.Add(others[0]);
-            others.RemoveAt(0);
-        }
+        // 2. Affordable
+        if (affordable.Count > 0) { _currentHand.Add(affordable[0]); affordable.RemoveAt(0); }
+        else if (others.Count > 0) { _currentHand.Add(others[0]); others.RemoveAt(0); }
 
-        // Slot 2: Must be affordable
-        if (affordable.Count > 0)
-        {
-            _currentHand.Add(affordable[0]);
-            affordable.RemoveAt(0);
-        }
-        else if (others.Count > 0)
-        {
-            _currentHand.Add(others[0]);
-            others.RemoveAt(0);
-        }
-
-        // Slot 3: Wildcard (Affordable or Expensive but within 10 of max)
-        // Filter 'others' to only show things within +10 cost
+        // 3. Wildcard
         var closeReach = others.Where(p => p.politicalCost <= currentPower + 10).ToList();
-        
-        // Combine remaining affordable + close reach
         var wildcardPool = affordable.Concat(closeReach).OrderBy(x => Random.value).ToList();
+        if (wildcardPool.Count > 0) _currentHand.Add(wildcardPool[0]);
+        else if (others.Count > 0) _currentHand.Add(others[0]);
 
-        if (wildcardPool.Count > 0)
-        {
-            _currentHand.Add(wildcardPool[0]);
-        }
-        else if (others.Count > 0) // Fallback: just show any expensive card if nothing else exists
-        {
-             _currentHand.Add(others[0]);
-        }
-
-        // D. Shuffle the Hand (Visuals)
-        // We shuffle the final 3 cards so the "Expensive" one isn't always on the right button
         _currentHand = _currentHand.OrderBy(x => Random.value).ToList();
-
-        // E. Assign to Buttons
         AssignPoliciesToUI();
     }
 
@@ -152,24 +118,21 @@ public class TermManager : MonoBehaviour
         {
             if (i < _currentHand.Count)
             {
-                // Show Button
                 choiceButtons[i].gameObject.SetActive(true);
+                choiceButtons[i].interactable = true; // Make clickable
 
                 Policy p = _currentHand[i];
                 Button btn = choiceButtons[i];
-
-                // Text Setup
                 TMP_Text btnText = btn.GetComponentInChildren<TMP_Text>();
 
                 // Colour for Cost text
                 string costColour = "red";
                 // string costColour = (p.politicalCost > currentPower) ? "red" : "white";
                 if (btnText) btnText.text = $"{p.policyName}\n<size=80%><color={costColour}>(Cost: {p.politicalCost})</color></size>";
+
                 
-                // Interaction Setup
                 btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => OnPolicyClicked(p));
-                btn.interactable = true; 
+                btn.onClick.AddListener(() => OnPolicySelected(p)); // Select, don't buy yet
 
                 // Hover Logic
                 var hover = btn.GetComponent<ButtonHoverHandler>();
@@ -180,41 +143,74 @@ public class TermManager : MonoBehaviour
             }
             else
             {
-                // Hide unused buttons (e.g. if we ran out of cards and only have 2 left)
                 choiceButtons[i].gameObject.SetActive(false);
             }
         }
     }
 
-    void OnPolicyClicked(Policy p)
+    // --- PHASE 1 - SELECT TO PREVIEW ---
+    void OnPolicySelected(Policy p)
     {
-        if (currentPower >= p.politicalCost)
-        {
-            // 1. Pay & Act
-            currentPower -= p.politicalCost;
-            simManager.ApplyPolicyEffect(p);
-            
-            // 2. Remove from Deck (No duplicates)
-            if (_policyDeck.Contains(p))
-            {
-                _policyDeck.Remove(p);
-            }
-
-            // 3. Log
-            LogTurn(p);
-
-            // 4. Next Turn
-            currentTurn++;
-            if (currentTurn > maxTurns) EndGame("Term Finished");
-            else StartNewTurn();
-        }
-        else
+        if (currentPower < p.politicalCost)
         {
             Debug.Log("Too expensive!");
-            // Or shake button
+            return;
         }
+
+        // 1. Lock State
+        currentState = TurnState.Locked;
+        _selectedPolicy = p;
+
+        // 2. Lock Visuals
+        simManager.PreviewPolicy(p);     // Force show it one last time
+        simManager.SetPreviewLock(true); // Prevent it from disappearing
+
+        // 3. Update UI
+        // Hide all policy buttons so they can't change their mind without canceling
+        foreach (var btn in choiceButtons) btn.gameObject.SetActive(false);
+        
+        // Show Confirm Panel
+        if (confirmPanel) confirmPanel.SetActive(true);
     }
 
+    // --- PHASE 2 - CONFIRMATION ---
+    void OnConfirmClicked()
+    {
+        if (_selectedPolicy == null) return;
+
+        // 1. Pay & Act
+        currentPower -= _selectedPolicy.politicalCost;
+        simManager.SetPreviewLock(false); // Unlock so Apply can run normally
+        simManager.ApplyPolicyEffect(_selectedPolicy);
+        
+        // 2. Remove from Deck
+        if (_policyDeck.Contains(_selectedPolicy)) _policyDeck.Remove(_selectedPolicy);
+
+        // 3. Log
+        LogTurn(_selectedPolicy);
+
+        // 4. Next Turn
+        currentTurn++;
+        if (currentTurn > maxTurns) EndGame("Term Finished");
+        else StartNewTurn();
+    }
+
+    void OnCancelClicked()
+    {
+        // 1. Unlock State
+        currentState = TurnState.Drafting;
+        _selectedPolicy = null;
+
+        // 2. Reset Visuals
+        simManager.SetPreviewLock(false); // Unlock
+        simManager.StopPreview();         // Revert to reality
+
+        // 3. Restore UI
+        if (confirmPanel) confirmPanel.SetActive(false);
+        AssignPoliciesToUI(); // Re-show all buttons
+    }
+
+    // --- LOGGING & END GAME ---
     void LogTurn(Policy chosen)
     {
         DatabaseManager.TurnLog log = new DatabaseManager.TurnLog();
@@ -223,20 +219,15 @@ public class TermManager : MonoBehaviour
         log.costPaid = chosen.politicalCost;
         log.availableOptions = _currentHand.Select(p => p.policyName).ToArray();
         log.resultingFairness = simManager.GetCurrentSocietalFairness(); 
-
         _sessionData.turnHistory.Add(log);
     }
 
     void EndGame(string reason)
     {
         isGameActive = false;
-        
         _sessionData.gameOverReason = reason;
         _sessionData.totalTurnsPlayed = currentTurn;
-        
-        if (DatabaseManager.Instance) 
-            DatabaseManager.Instance.UploadGameResult(_sessionData);
-
+        if (DatabaseManager.Instance) DatabaseManager.Instance.UploadGameResult(_sessionData);
         if (gameOverPanel) 
         {
             gameOverPanel.SetActive(true);
