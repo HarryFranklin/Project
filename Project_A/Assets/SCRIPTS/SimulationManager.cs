@@ -187,12 +187,25 @@ public class SimulationManager : MonoBehaviour
     public void OnHoverEnter(Respondent r)
     {
         if (r == null || CurrentLS == null || uiManager == null) return;
+        
+        // Highlight the visual
         if (visuals) visuals.SetHoverHighlight(r);
+
         int index = PopulationList.IndexOf(r);
         if (index == -1) return;
 
+        // 1. Calculate Stats
         float cLS = CurrentLS[index];
-        string info = $"<size=120%><b>Respondent #{r.id}</b></size>\nLS: {cLS:F2}";
+        float uSelf = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
+        float uSoc = WelfareMetrics.EvaluateDistribution(CurrentLS, r.societalUtilities);
+
+        // 2. Build Rich Text String
+        string info = $"<size=120%><b>Respondent #{r.id}</b></size>\n";
+        info += $"<b>Life Satisfaction:</b> {cLS:F2}/10\n";
+        info += $"<b>Personal Utility:</b> {uSelf:F2}\n";
+        info += $"<b>Societal Utility:</b> {uSoc:F2}";
+        
+        // 3. Send to UI
         uiManager.UpdateHoverInfo(info);
     }
 
