@@ -36,7 +36,7 @@ public class SimulationManager : MonoBehaviour
         float[] onsDist = WelfareMetrics.GetBaselineDistribution();
         for (int i = 0; i < count; i++)
         {
-            float startingLS = WelfareMetrics.GetWeightedRandomLS(onsDist);
+            float startingLS = WelfareMetrics.GetContinuousWeightedLS(onsDist);            
             BaselineLS[i] = startingLS;
             PopulationList[i].currentLS = startingLS; 
         }

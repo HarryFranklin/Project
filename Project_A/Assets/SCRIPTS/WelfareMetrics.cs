@@ -57,7 +57,7 @@ public class WelfareMetrics
             cumulative += distribution[i];
             if (r <= cumulative) return i;
         }
-        return 10; // Fallback
+        return 8; // Fallback to most common if maths fails
     }
 
     // --- UTILITY FUNCTIONS ---
@@ -111,5 +111,36 @@ public class WelfareMetrics
         
         // Return the average
         return (float)(totalUtility / populationLS.Length);
+    }
+
+    // De-banding logic
+    public static float GetContinuousWeightedLS(float[] distribution)
+    {
+        // 1. Pick integer anchor (Will always be 2-10 based on ONS settings)
+        int anchor = GetWeightedRandomLS(distribution);
+
+        // 2. Add Gaussian noise to blur the lines
+        // stdDev of 0.4 for organic smoothing without overlapping much
+        float noise = RandomGaussian(0f, 0.4f);
+        
+        // 3. Combine
+        float result = anchor + noise;
+
+        // 4. Clamp from 2 to 10
+        // This ensures that even if a "2" gets negative noise (-0.5), 
+        // they stop at 2.0 and do not become a "1".
+        return Mathf.Clamp(result, 2.0f, 10.0f);
+    }
+
+    private static float RandomGaussian(float mean, float stdDev)
+    {
+        // Box-Muller Transform
+        float u1 = 1.0f - Random.value; // Uniform(0,1]
+        float u2 = 1.0f - Random.value;
+        
+        float randStdNormal = Mathf.Sqrt(-2.0f * Mathf.Log(u1)) *
+                              Mathf.Sin(2.0f * Mathf.PI * u2); 
+                              
+        return mean + stdDev * randStdNormal;
     }
 }
