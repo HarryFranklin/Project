@@ -8,7 +8,10 @@ public enum AxisVariable
 
     // Delta metrics:
     DeltaPersonalUtility,
-    DeltaSocietalFairness
+    DeltaSocietalFairness,
+
+    // Histogram view
+    Stack
 }
 
 // for Z (face)

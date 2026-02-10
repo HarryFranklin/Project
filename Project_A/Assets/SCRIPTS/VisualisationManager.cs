@@ -19,6 +19,9 @@ public class VisualisationManager : MonoBehaviour
     private float[] _cacheXValues;
     private float[] _cacheYValues;
 
+    // Binning for histogram
+    private const float STACK_BIN_SIZE = 0.25f; // how wide is each stack column
+
     // Optimisation - array is faster than list
     private RespondentVisual[] _activeVisualsArray; 
     private List<RespondentVisual> _visualsList = new List<RespondentVisual>(); // Keep list for easy adding/removing
@@ -81,6 +84,14 @@ public class VisualisationManager : MonoBehaviour
             _cacheYValues = new float[count];
         }
 
+        // Stacking calculation
+        // If we are stacking, we need to count how many are in each bin
+        Dictionary<int, int> binCount = null;
+        if (yAxis == AxisVariable.Stack)
+        {
+            binCount = new Dictionary<int, int>();
+        }
+
         // Pass 1: Calculcate Values and Find Ranges
         float xMin = float.MaxValue, xMax = float.MinValue;
         float yMin = float.MaxValue, yMax = float.MinValue;
@@ -96,7 +107,28 @@ public class VisualisationManager : MonoBehaviour
             // Only calculate costly metrics if we actually need them for the axis
             // (Helper function handles the math)
             float valX = CalculateAxisValue(xAxis, r, cLS, bLS, currentLS, baselineLS);
-            float valY = CalculateAxisValue(yAxis, r, cLS, bLS, currentLS, baselineLS);
+
+            float valY = 0;
+            if (yAxis == AxisVariable.Stack)
+            {
+                // Quantise x to nearest bin
+                float snappedX = Mathf.Round(valX / STACK_BIN_SIZE) * STACK_BIN_SIZE;
+                // use snapped x to find stack index
+                // * by 100 to make it a safe int dict key
+                int binKey = Mathf.RoundToInt(snappedX * 100);
+
+                if (!binCount.ContainsKey(binKey)) binCount[binKey] = 0;
+                // y value is current count
+                valY = binCount[binKey];
+                // increment for next person
+                binCount[binKey]++;
+
+                valX = snappedX;
+            }
+            else
+            {
+                valY = CalculateAxisValue(yAxis, r, cLS, bLS, currentLS, baselineLS);            
+            }
 
             // 2. Store in Cache
             _cacheXValues[i] = valX;
@@ -231,32 +263,21 @@ public class VisualisationManager : MonoBehaviour
         if (type == AxisVariable.LifeSatisfaction || type == AxisVariable.Wealth) { min = 0; max = 10; return; }
         if (type == AxisVariable.PersonalUtility || type == AxisVariable.SocietalFairness) { min = 0; max = 1; return; }
 
-        // 2. Dynamic Ranges (Deltas)
-        // If everything is zero (no policy), default to -0.1 to 0.1
-        if (min == float.MaxValue || max == float.MinValue || (min == 0 && max == 0))
+        // Stack range
+        if (type == AxisVariable.Stack)
         {
-            min = -0.1f; max = 0.1f;
+            min = 0; // Hard floor at 0q
+            max = Mathf.Max(max, 5f); 
             return;
         }
 
-        // Symmetry: Delta graphs look best if 0 is in the middle.
-        // Find the biggest deviation from zero.
-        float absMax = Mathf.Max(Mathf.Abs(min), Mathf.Abs(max));
+        // Dynamic Deltas
+        if (min == float.MaxValue || max == float.MinValue || (min == 0 && max == 0)) { min = -0.1f; max = 0.1f; return; }
         
-        // Add padding so points aren't on the edge
+        float absMax = Mathf.Max(Mathf.Abs(min), Mathf.Abs(max));
         absMax *= 1.05f;
-
-        // Clamp to a sensible minimum so we don't zoom in to tiny deltas
-        if (absMax < 0.05f)
-        {
-            // Tiny values - clamp minimum to 0.05
-            absMax = 0.05f; 
-        }
-        else
-        {
-            // Standard values - Round to nearest 0.1
-            absMax = Mathf.Ceil(absMax * 10f) / 10f;
-        }
+        if (absMax < 0.05f) absMax = 0.05f; 
+        else absMax = Mathf.Ceil(absMax * 10f) / 10f;
 
         min = -absMax;
         max = absMax;

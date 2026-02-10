@@ -8819,8 +8819,12 @@ MonoBehaviour:
   visuals: {fileID: 1861122960}
   uiManager: {fileID: 1137985465}
   dataReader: {fileID: 417024558}
-  xAxis: 4
-  yAxis: 5
+  defaultXAxis: 0
+  defaultYAxis: 6
+  previewXAxis: 4
+  previewYAxis: 5
+  xAxis: 0
+  yAxis: 6
   faceMode: 0
 --- !u!4 &1862640735
 Transform:

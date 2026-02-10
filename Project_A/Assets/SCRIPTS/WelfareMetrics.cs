@@ -7,18 +7,9 @@ public class WelfareMetrics
     // ONS Data (UK Life Satisfaction Distribution 0-10)
     private static readonly float[] ONS_Distribution_Raw = new float[]
     {
-        // Remember it's tiny percentages. 0.06 is 6%.
-        0.0040f, // 0 - Discard
-        0.0030f, // 1 - Discard
-        0.0100f, // 2
-        0.0210f, // 3
-        0.0350f, // 4
-        0.0750f, // 5
-        0.1000f, // 6
-        0.2240f, // 7
-        0.3150f, // 8
-        0.1510f, // 9
-        0.0620f  // 10
+        0.0040f, 0.0030f, 0.0100f, 0.0210f, 0.0350f, 0.0750f, 
+        0.1000f, 0.2240f, 0.3150f, 0.1510f, 0.0620f
+        // Reject first 2, remember it's tiny tiny decimals
     };
 
     // Get ONS data, fix and normalise it
@@ -116,20 +107,20 @@ public class WelfareMetrics
     // De-banding logic
     public static float GetContinuousWeightedLS(float[] distribution)
     {
-        // 1. Pick integer anchor (Will always be 2-10 based on ONS settings)
         int anchor = GetWeightedRandomLS(distribution);
+        float noise = 0f;
+        float result = 0f;
 
-        // 2. Add Gaussian noise to blur the lines
-        // stdDev of 0.4 for organic smoothing without overlapping much
-        float noise = RandomGaussian(0f, 0.4f);
-        
-        // 3. Combine
-        float result = anchor + noise;
+        int attempts = 0;
+        do
+        {
+            noise = RandomGaussian(0f, 0.4f);
+            result = anchor + noise;
+            attempts++;
+        } 
+        while ((result < 2.0f || result > 10.0f) && attempts < 10);
 
-        // 4. Clamp from 2 to 10
-        // This ensures that even if a "2" gets negative noise (-0.5), 
-        // they stop at 2.0 and do not become a "1".
-        return Mathf.Clamp(result, 2.0f, 10.0f);
+        return Mathf.Clamp(result, 2.0f, 10.0f); // Final safety net
     }
 
     private static float RandomGaussian(float mean, float stdDev)
