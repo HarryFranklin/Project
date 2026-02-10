@@ -16,9 +16,9 @@ MonoBehaviour:
   description: "Reduces rates for high-street shops. encourages local economy but
     reduces tax take.\t"
   politicalCost: 25
-  baseChangeRich: 0.3
-  baseChangeMiddle: 0.4
-  baseChangePoor: 0
+  baseChangeRich: 0.2
+  baseChangeMiddle: 0.2
+  baseChangePoor: -0.1
   richThreshold: 8
   poorThreshold: 4
   specificRules:
@@ -27,4 +27,4 @@ MonoBehaviour:
     maxLS: 8
     affectEveryone: 0
     proportion: 0.3
-    impact: 0.8
+    impact: 0.6

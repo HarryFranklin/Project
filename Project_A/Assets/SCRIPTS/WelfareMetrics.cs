@@ -108,19 +108,24 @@ public class WelfareMetrics
     public static float GetContinuousWeightedLS(float[] distribution)
     {
         int anchor = GetWeightedRandomLS(distribution);
-        float noise = 0f;
-        float result = 0f;
+        float noise = RandomGaussian(0f, 0.4f);
+        float result = anchor + noise;
 
-        int attempts = 0;
-        do
+        // Folded normal distribution logic.
+        
+        if (result > 10.0f)
         {
-            noise = RandomGaussian(0f, 0.4f);
-            result = anchor + noise;
-            attempts++;
-        } 
-        while ((result < 2.0f || result > 10.0f) && attempts < 10);
+            float excess = result - 10.0f;
+            result = 10.0f - excess;
+        }
 
-        return Mathf.Clamp(result, 2.0f, 10.0f); // Final safety net
+        if (result < 2.0f)
+        {
+            float excess = 2.0f - result;
+            result = 2.0f + excess;
+        }
+
+        return Mathf.Clamp(result, 2.0f, 10.0f);
     }
 
     private static float RandomGaussian(float mean, float stdDev)

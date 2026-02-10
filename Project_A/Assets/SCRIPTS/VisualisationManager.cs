@@ -9,37 +9,30 @@ public class VisualisationManager : MonoBehaviour
     public GraphGrid graphGrid;
     public GraphAxisVisuals graphAxes;
 
-    [Header("Visual Assets")]
-    public Sprite faceGreen;
-    public Sprite faceYellow; 
-    public Sprite faceRed; 
-    public Sprite faceDead;
+    [Header("Graph Settings")]
+    [Tooltip("For Delta views, the axis will be locked to +/- this value (e.g. -1 to +1).")]
+    public float deltaScaleRange = 1.0f;
 
-    // Cache arrays
+    [Header("Visual Assets")]
+    public Sprite faceGreen, faceYellow, faceRed, faceDead;
+
+    // Cache
     private float[] _cacheXValues;
     private float[] _cacheYValues;
-
-    // Binning for histogram
-    private const float STACK_BIN_SIZE = 0.25f; // how wide is each stack column
-
-    // Optimisation - array is faster than list
+    private const float STACK_BIN_SIZE = 0.25f; 
     private RespondentVisual[] _activeVisualsArray; 
-    private List<RespondentVisual> _visualsList = new List<RespondentVisual>(); // Keep list for easy adding/removing
-
-    // State
+    private List<RespondentVisual> _visualsList = new List<RespondentVisual>(); 
     private bool _showGhostOverlay = false;
 
-    // --- 1. Setup ---
+    // --- Setup ---
     public void CreatePopulation(List<Respondent> population, SimulationManager manager)
     {
-        // Clear old objects
         if (_visualsList.Count > 0)
         {
             foreach(var v in _visualsList) if(v) Destroy(v.gameObject);
             _visualsList.Clear();
         }
 
-        // Spawn new ones
         foreach (var respondent in population)
         {
             GameObject obj = Instantiate(personPrefab, personContainer);
@@ -48,33 +41,20 @@ public class VisualisationManager : MonoBehaviour
             _visualsList.Add(visual);
         }
 
-        // Convert to array as they're faster
         _activeVisualsArray = _visualsList.ToArray();
-
-        // Init Cache
-        int count = population.Count;
-        _cacheXValues = new float[count];
-        _cacheYValues = new float[count];
+        _cacheXValues = new float[population.Count];
+        _cacheYValues = new float[population.Count];
     }
 
-    // --- 2. Manager Update Loop ---
+    // --- Update ---
     void Update()
     {
-        // If we haven't spawned yet, do nothing
         if (_activeVisualsArray == null) return;
-
-        // Cache DeltaTime once per frame
         float dt = Time.deltaTime; 
-
-        // Loop through the Array
-        for (int i = 0; i < _activeVisualsArray.Length; i++)
-        {
-            // Call the manual update on the visual.
-            _activeVisualsArray[i].ManualUpdate(dt);
-        }
+        for (int i = 0; i < _activeVisualsArray.Length; i++) _activeVisualsArray[i].ManualUpdate(dt);
     }
 
-    // --- 3. Display Logic
+    // --- Display Logic ---
     public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis, FaceMode faceMode)
     {
         int count = population.Length;
@@ -84,45 +64,30 @@ public class VisualisationManager : MonoBehaviour
             _cacheYValues = new float[count];
         }
 
-        // Stacking calculation
-        // If we are stacking, we need to count how many are in each bin
-        Dictionary<int, int> binCount = null;
-        if (yAxis == AxisVariable.Stack)
-        {
-            binCount = new Dictionary<int, int>();
-        }
+        bool isStackMode = (yAxis == AxisVariable.Stack);
+        Dictionary<int, int> binCount = isStackMode ? new Dictionary<int, int>() : null;
 
-        // Pass 1: Calculcate Values and Find Ranges
         float xMin = float.MaxValue, xMax = float.MinValue;
         float yMin = float.MaxValue, yMax = float.MinValue;
 
+        // Pass 1: Calculation
         for (int i = 0; i < count; i++)
         {
             Respondent r = population[i];
-
-            // 1. Calculate Metrics ONCE
             float cLS = currentLS[i];
             float bLS = baselineLS[i];
 
-            // Only calculate costly metrics if we actually need them for the axis
-            // (Helper function handles the math)
             float valX = CalculateAxisValue(xAxis, r, cLS, bLS, currentLS, baselineLS);
-
             float valY = 0;
-            if (yAxis == AxisVariable.Stack)
+
+            if (isStackMode)
             {
-                // Quantise x to nearest bin
                 float snappedX = Mathf.Round(valX / STACK_BIN_SIZE) * STACK_BIN_SIZE;
-                // use snapped x to find stack index
-                // * by 100 to make it a safe int dict key
                 int binKey = Mathf.RoundToInt(snappedX * 100);
 
                 if (!binCount.ContainsKey(binKey)) binCount[binKey] = 0;
-                // y value is current count
                 valY = binCount[binKey];
-                // increment for next person
                 binCount[binKey]++;
-
                 valX = snappedX;
             }
             else
@@ -130,11 +95,9 @@ public class VisualisationManager : MonoBehaviour
                 valY = CalculateAxisValue(yAxis, r, cLS, bLS, currentLS, baselineLS);            
             }
 
-            // 2. Store in Cache
             _cacheXValues[i] = valX;
             _cacheYValues[i] = valY;
 
-            // 3. Track Min/Max (Ignore dead people for range calculation to keep it clean?)
             if (cLS > -0.9f) 
             {
                 if (valX < xMin) xMin = valX;
@@ -144,16 +107,15 @@ public class VisualisationManager : MonoBehaviour
             }
         }
 
-        // --- Process Ranges, Dynamic vs Fixed
         GetFinalRange(xAxis, ref xMin, ref xMax);
         GetFinalRange(yAxis, ref yMin, ref yMax);
-
-        // --- Update Axes ---
         graphAxes.UpdateAxisVisuals(xAxis, xMin, xMax, yAxis, yMin, yMax);
 
-        // --- Pass 2: Draw Visuals ---
+        // Pass 2: Draw
         bool isComparisonMode = (activePolicy != null);
-        bool enableGhosts = _showGhostOverlay && isComparisonMode; 
+        
+        // Disable ghosts in stack mode
+        bool enableGhosts = _showGhostOverlay && isComparisonMode && !isStackMode;
 
         for (int i = 0; i < count; i++)
         {
@@ -166,9 +128,7 @@ public class VisualisationManager : MonoBehaviour
             float bUSelf = WelfareMetrics.GetUtilityForPerson(bLS, r.personalUtilities);
             float bUSoc = WelfareMetrics.EvaluateDistribution(baselineLS, r.societalUtilities);
 
-            // Sprite Selection
-            Sprite leftSprite = faceYellow;
-            Sprite rightSprite = faceYellow;
+            Sprite leftSprite = faceYellow, rightSprite = faceYellow;
             if (cLS <= -0.9f) { leftSprite = rightSprite = faceDead; }
             else
             {
@@ -190,51 +150,23 @@ public class VisualisationManager : MonoBehaviour
             Sprite gLeft = GetAbsoluteSprite(bLS);
             Sprite gRight = GetAbsoluteSocietySprite(bUSoc);
 
-            // Positioning: Use the Cached values and the Calculated Ranges
-            float baseX = CalculateAxisValue(xAxis, r, bLS, bLS, baselineLS, baselineLS); // Baseline args
-            float baseY = CalculateAxisValue(yAxis, r, bLS, bLS, baselineLS, baselineLS);
-
             Vector2 currPos = GetPos(r.id, _cacheXValues[i], _cacheYValues[i], xMin, xMax, yMin, yMax);
-            Vector2 basePos = GetPos(r.id, baseX, baseY, xMin, xMax, yMin, yMax);
+            Vector2 basePos = currPos; // Default to no movement
+
+            if (!isStackMode)
+            {
+                // Only calculate previous position if NOT in stack mode
+                float baseX = CalculateAxisValue(xAxis, r, bLS, bLS, baselineLS, baselineLS); 
+                float baseY = CalculateAxisValue(yAxis, r, bLS, bLS, baselineLS, baselineLS);
+                basePos = GetPos(r.id, baseX, baseY, xMin, xMax, yMin, yMax);
+            }
+            // In Stack Mode, basePos == currPos, so magnitude is 0, so Arrows are hidden automatically.
 
             _activeVisualsArray[i].UpdateVisuals(currPos, basePos, leftSprite, rightSprite, gLeft, gRight, enableGhosts);
         }
     }
 
-    public void SetHoverHighlight(Respondent target)
-    {
-        bool anyoneHovered = (target != null);
-        
-        // Loop through array for speed
-        if (_activeVisualsArray != null)
-        {
-            for (int i = 0; i < _activeVisualsArray.Length; i++)
-            {
-                var v = _activeVisualsArray[i];
-                bool isTarget = (target != null && v.data.id == target.id);
-                v.SetFocusState(isTarget, anyoneHovered);
-            }
-        }
-    }
-
-    public void SetGhostMode(bool enable)
-    {
-        _showGhostOverlay = enable;
-    }
-
-    public void SetArrowMode(bool showAll)
-    {
-        if (_activeVisualsArray == null) return;
-
-        for (int i = 0; i < _activeVisualsArray.Length; i++)
-        {
-            _activeVisualsArray[i].SetArrowState(showAll);
-        }
-    }
-
-    // --- HELPERS ---
-
-    // Calculate the axis value
+    // --- Helpers ---
     private float CalculateAxisValue(AxisVariable type, Respondent r, float ls, float baseLS, float[] popLS, float[] popBaseLS)
     {
         switch (type)
@@ -242,48 +174,56 @@ public class VisualisationManager : MonoBehaviour
             case AxisVariable.LifeSatisfaction: return ls;
             case AxisVariable.PersonalUtility: return WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities);
             case AxisVariable.SocietalFairness: return WelfareMetrics.EvaluateDistribution(popLS, r.societalUtilities);
-            case AxisVariable.Wealth: return ls; // Placeholder
-            
+            case AxisVariable.Wealth: return ls;
             case AxisVariable.DeltaPersonalUtility: 
                 return WelfareMetrics.GetUtilityForPerson(ls, r.personalUtilities) - 
                        WelfareMetrics.GetUtilityForPerson(baseLS, r.personalUtilities);
-            
             case AxisVariable.DeltaSocietalFairness:
                 return WelfareMetrics.EvaluateDistribution(popLS, r.societalUtilities) - 
                        WelfareMetrics.EvaluateDistribution(popBaseLS, r.societalUtilities);
-            
             default: return 0;
         }
     }
 
-    // Calculate the range
     private void GetFinalRange(AxisVariable type, ref float min, ref float max)
     {
-        // 1. Fixed Ranges (Absolute)
-        if (type == AxisVariable.LifeSatisfaction || type == AxisVariable.Wealth) { min = 0; max = 10; return; }
-        if (type == AxisVariable.PersonalUtility || type == AxisVariable.SocietalFairness) { min = 0; max = 1; return; }
+        // 1. Fixed Axes (Absolute)
+        if (type == AxisVariable.LifeSatisfaction || type == AxisVariable.Wealth) 
+        { 
+            min = 0; max = 10; return; 
+        }
+        if (type == AxisVariable.PersonalUtility || type == AxisVariable.SocietalFairness) 
+        { 
+            min = 0; max = 1; return; 
+        }
 
-        // Stack range
+        // 2. Fixed Delta Scales
+        // Instead of calculating min/max from the data, force it to a fixed window.
+        if (type == AxisVariable.DeltaPersonalUtility || type == AxisVariable.DeltaSocietalFairness) 
+        { 
+            min = -deltaScaleRange; 
+            max = deltaScaleRange; 
+            return; 
+        }
+
+        // 3. Stack Range (Dynamic Y)
         if (type == AxisVariable.Stack)
         {
-            min = 0; // Hard floor at 0q
+            min = 0; 
             max = Mathf.Max(max, 5f); 
             return;
         }
 
-        // Dynamic Deltas
-        if (min == float.MaxValue || max == float.MinValue || (min == 0 && max == 0)) { min = -0.1f; max = 0.1f; return; }
+        // 4. Fallback (Dynamic Auto-Scaling for unknown types)
+        if (min == float.MaxValue || max == float.MinValue || (min == 0 && max == 0)) 
+        { 
+            min = -0.1f; max = 0.1f; return; 
+        }
         
-        float absMax = Mathf.Max(Mathf.Abs(min), Mathf.Abs(max));
-        absMax *= 1.05f;
-        if (absMax < 0.05f) absMax = 0.05f; 
-        else absMax = Mathf.Ceil(absMax * 10f) / 10f;
-
-        min = -absMax;
-        max = absMax;
+        float absMax = Mathf.Max(Mathf.Abs(min), Mathf.Abs(max)) * 1.05f;
+        min = -absMax; max = absMax;
     }
 
-    // Accepts baseline args for Delta graphs
     private Vector2 GetPos(int id, float valX, float valY, float xMin, float xMax, float yMin, float yMax)
     {        
         float normX = Mathf.InverseLerp(xMin, xMax, valX);
@@ -292,25 +232,22 @@ public class VisualisationManager : MonoBehaviour
     }
 
     // Sprite Helpers
-    private Sprite GetAbsoluteSprite(float ls)
-    {
-        if (ls >= 6.0f) return faceGreen; 
-        if (ls <= 4.0f) return faceRed;
-        return faceYellow;
-    }
+    private Sprite GetAbsoluteSprite(float ls) { if (ls >= 6.0f) return faceGreen; if (ls <= 4.0f) return faceRed; return faceYellow; }
+    private Sprite GetAbsoluteSocietySprite(float uSoc) { if (uSoc >= 0.6f) return faceGreen; if (uSoc <= 0.4f) return faceRed; return faceYellow; }
+    private Sprite GetRelativeSprite(float current, float baseline) { float diff = current - baseline; if (diff > 0.001f) return faceGreen; if (diff < -0.001f) return faceRed; return faceYellow; }
 
-    private Sprite GetAbsoluteSocietySprite(float uSoc)
+    public void SetHoverHighlight(Respondent target)
     {
-        if (uSoc >= 0.6f) return faceGreen;
-        if (uSoc <= 0.4f) return faceRed;
-        return faceYellow;
+        bool anyoneHovered = (target != null);
+        if (_activeVisualsArray != null)
+        {
+            for (int i = 0; i < _activeVisualsArray.Length; i++)
+            {
+                var v = _activeVisualsArray[i];
+                v.SetFocusState(target != null && v.data.id == target.id, anyoneHovered);
+            }
+        }
     }
-
-    private Sprite GetRelativeSprite(float current, float baseline)
-    {
-        float diff = current - baseline;
-        if (diff > 0.001f) return faceGreen;
-        if (diff < -0.001f) return faceRed;
-        return faceYellow;
-    }
+    public void SetGhostMode(bool enable) { _showGhostOverlay = enable; }
+    public void SetArrowMode(bool showAll) { if (_activeVisualsArray != null) foreach(var v in _activeVisualsArray) v.SetArrowState(showAll); }
 }
