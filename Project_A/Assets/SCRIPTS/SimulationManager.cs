@@ -92,7 +92,13 @@ public class SimulationManager : MonoBehaviour
             _hasGameStarted = true;
             xAxis = gameplayXAxis;
             yAxis = gameplayYAxis;
+
+            _cachedX = gameplayXAxis;
+            _cachedY = gameplayYAxis;
         }
+
+        // Prevents lingering ghosts
+        if (visuals) visuals.SetHoverHighlight(null);
         
         UpdateSimulation();
     }

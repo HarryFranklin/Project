@@ -226,8 +226,13 @@ public class VisualisationManager : MonoBehaviour
 
     private Vector2 GetPos(int id, float valX, float valY, float xMin, float xMax, float yMin, float yMax)
     {        
-        float normX = Mathf.InverseLerp(xMin, xMax, valX);
-        float normY = Mathf.InverseLerp(yMin, yMax, valY);
+        // Clamp values to the visual range so dots don't fly off-screen
+        float clampedX = Mathf.Clamp(valX, xMin, xMax);
+        float clampedY = Mathf.Clamp(valY, yMin, yMax);
+
+        float normX = Mathf.InverseLerp(xMin, xMax, clampedX);
+        float normY = Mathf.InverseLerp(yMin, yMax, clampedY);
+        
         return graphGrid.GetPlotPosition(normX, normY, id);
     }
 
