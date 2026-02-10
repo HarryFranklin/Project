@@ -17,8 +17,8 @@ MonoBehaviour:
     but has little impact on the very poor/rich.
   politicalCost: 20
   baseChangeRich: -0.1
-  baseChangeMiddle: 0.5
-  baseChangePoor: 0
+  baseChangeMiddle: 0.25
+  baseChangePoor: 0.1
   richThreshold: 8
   poorThreshold: 4
   specificRules:
@@ -27,4 +27,4 @@ MonoBehaviour:
     maxLS: 7
     affectEveryone: 0
     proportion: 0.4
-    impact: 0.8
+    impact: 0.4
