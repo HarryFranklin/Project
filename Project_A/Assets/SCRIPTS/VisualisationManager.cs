@@ -10,7 +10,10 @@ public class VisualisationManager : MonoBehaviour
     public GraphAxisVisuals graphAxes;
 
     [Header("Visual Assets")]
-    public Sprite faceGreen, faceYellow, faceRed, faceDead;
+    public Sprite faceGreen;
+    public Sprite faceYellow;
+    public Sprite faceRed;
+    public Sprite faceDead;
 
     [Header("Clustering Settings")]
     public int clusterCount = 4;
