@@ -20,22 +20,24 @@ public class VisualisationManager : MonoBehaviour
     public GameObject clusterPrefab;
     private List<ClusterVisual> _spawnedClusters = new List<ClusterVisual>();
     
-    // --- CLUSTER DATA (Read this from the UI) ---
+    // --- CLUSTER DATA ---
     [System.Serializable]
     public class GroupOpinion
     {
         public int id;
-        public string name; // e.g., "The Disenfranchised"
+        public string name;
         public int size;
-        public Vector2 visualCenter; // Normalized 0-1 position
-        
-        // The "Thoughts"
+        public Vector2 visualCenter;
         public float avgLS;
         public float avgSocietalFairness;
-        public float[] avgSocietalUtilities; // The collective curve
+        public float[] avgSocietalUtilities;
     }
     public List<GroupOpinion> CurrentClusters = new List<GroupOpinion>();
 
+    // --- INTERNAL STATE ---
+    private int[] _currentAssignments;
+    private FaceMode _currentFaceMode;
+    
     // Cache
     private float[] _cacheXValues;
     private float[] _cacheYValues;
@@ -77,6 +79,9 @@ public class VisualisationManager : MonoBehaviour
     // --- 3. Display Logic ---
     public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis, FaceMode faceMode)
     {
+        // 1. SAVE THE MODE (So we can use it in hover logic later)
+        _currentFaceMode = faceMode;
+
         int count = population.Length;
         if (_cacheXValues == null || _cacheXValues.Length != count)
         {
@@ -138,7 +143,6 @@ public class VisualisationManager : MonoBehaviour
             Respondent r = population[i];
             float cLS = currentLS[i];
 
-            // Sprites
             float cUSelf = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
             float cUSoc = WelfareMetrics.EvaluateDistribution(currentLS, r.societalUtilities);
             float bLS = baselineLS[i];
@@ -158,7 +162,6 @@ public class VisualisationManager : MonoBehaviour
                 }
             }
 
-            // Positions
             Vector2 currPos = GetPos(r.id, _cacheXValues[i], _cacheYValues[i], xMin, xMax, yMin, yMax);
             Vector2 basePos = currPos; 
 
@@ -172,7 +175,6 @@ public class VisualisationManager : MonoBehaviour
         }
 
         // --- PASS 3: CLUSTERING ---
-        // Pass the Min/Max ranges so we can normalise data before clustering
         RecalculateClusters(population, currentLS, xMin, xMax, yMin, yMax);
     }
 
@@ -182,7 +184,6 @@ public class VisualisationManager : MonoBehaviour
         int count = population.Length;
         Vector2[] normPoints = new Vector2[count];
 
-        // 1. Prepare Normalized Points
         for (int i = 0; i < count; i++)
         {
             float nX = Mathf.InverseLerp(xMin, xMax, _cacheXValues[i]);
@@ -190,20 +191,20 @@ public class VisualisationManager : MonoBehaviour
             normPoints[i] = new Vector2(nX, nY);
         }
 
-        // 2. Run Math
         KMeans.Result result = KMeans.GetClusters(normPoints, clusterCount);
 
-        // 3. Update Data Structure
+        // --- SAVE ASSIGNMENTS FOR HOVER LOGIC ---
+        _currentAssignments = result.Assignments;
+
         CurrentClusters.Clear();
         for (int k = 0; k < clusterCount; k++) {
             CurrentClusters.Add(new GroupOpinion { 
                 id = k, 
-                visualCenter = result.Centres[k], 
+                visualCenter = result.Centres[k],
                 avgSocietalUtilities = new float[6] 
             });
         }
 
-        // 4. Sum Data
         for (int i = 0; i < count; i++)
         {
             int cId = result.Assignments[i];
@@ -216,7 +217,6 @@ public class VisualisationManager : MonoBehaviour
             for(int j=0; j<6; j++) g.avgSocietalUtilities[j] += r.societalUtilities[j];
         }
 
-        // 5. Finalize & Name
         foreach (var g in CurrentClusters)
         {
             if (g.size > 0)
@@ -225,7 +225,6 @@ public class VisualisationManager : MonoBehaviour
                 g.avgSocietalFairness /= g.size;
                 for(int j=0; j<6; j++) g.avgSocietalUtilities[j] /= g.size;
 
-                // Simple Naming Logic
                 if (g.avgLS >= 7.5f) g.name = "The Thriving";
                 else if (g.avgLS <= 4.5f) g.name = "The Struggling";
                 else if (g.avgSocietalFairness < 0.3f) g.name = "The Cynics";
@@ -233,7 +232,6 @@ public class VisualisationManager : MonoBehaviour
             }
         }
 
-        // --- SPAWN/UPDATE VISUALS ---
         UpdateClusterObjects();
     }
 
@@ -241,7 +239,6 @@ public class VisualisationManager : MonoBehaviour
     {
         if (!clusterPrefab) return;
 
-        // 1. Spawn logic
         while (_spawnedClusters.Count < CurrentClusters.Count)
         {
             GameObject obj = Instantiate(clusterPrefab, personContainer);
@@ -250,7 +247,6 @@ public class VisualisationManager : MonoBehaviour
             _spawnedClusters.Add(component);
         }
 
-        // 2. Position logic
         for (int i = 0; i < _spawnedClusters.Count; i++)
         {
             ClusterVisual vis = _spawnedClusters[i];
@@ -263,17 +259,13 @@ public class VisualisationManager : MonoBehaviour
 
                 if (graphGrid != null)
                 {
-                    // Get the plotted position (This is likely a Local Coordinate)
                     Vector3 plotPos = graphGrid.GetPlotPosition(g.visualCenter.x, g.visualCenter.y, 0);
-                    
-                    // We treat the plotPos as local to the container, just like the faces.
                     vis.transform.localPosition = new Vector3(plotPos.x, plotPos.y, 0);
-                    
                     vis.transform.rotation = Quaternion.identity;
-                    vis.transform.SetAsLastSibling(); // Draw on top
+                    vis.transform.SetAsLastSibling();
                 }
                 
-                vis.UpdateVisuals(g, FindObjectOfType<SimulationManager>());
+                vis.UpdateVisuals(g, FindAnyObjectByType<SimulationManager>());
             }
             else
             {
@@ -282,7 +274,87 @@ public class VisualisationManager : MonoBehaviour
         }
     }
 
-    // --- HELPERS ---
+    // --- INTERACTION LOGIC ---
+
+    public int GetClusterID(int respondentIndex)
+    {
+        if (_currentAssignments != null && respondentIndex >= 0 && respondentIndex < _currentAssignments.Length)
+        {
+            return _currentAssignments[respondentIndex];
+        }
+        return -1;
+    }
+
+    public void SetClusterHighlight(int activeClusterID)
+    {
+        if (_activeVisualsArray == null || _currentAssignments == null) return;
+
+        bool isReset = (activeClusterID == -1);
+
+        // 1. Update People
+        for (int i = 0; i < _activeVisualsArray.Length; i++)
+        {
+            RespondentVisual vis = _activeVisualsArray[i];
+            
+            if (isReset)
+            {
+                // RESET: No target, No hover context.
+                // This tells the visual to return to its default state.
+                vis.SetFocusState(false, false); 
+            }
+            else
+            {
+                bool isMember = (_currentAssignments[i] == activeClusterID);
+                
+                // HIGHLIGHT LOGIC:
+                // - Arg 1 (isTarget): If I am a member, treat me as a "Target" (Show Arrow/Ghost)
+                // - Arg 2 (isHovered): The system is in hover mode (so fade out if I'm NOT a target)
+                vis.SetFocusState(isMember, true);
+            }
+        }
+
+        // 2. Update Cluster Bubbles (Hide the other bubbles to reduce clutter)
+        for (int i = 0; i < _spawnedClusters.Count; i++)
+        {
+            var clusterVis = _spawnedClusters[i];
+            if (clusterVis == null) continue;
+
+            // Show bubble if it matches the active ID, OR if we are resetting everything
+            bool showBubble = isReset || (clusterVis.clusterID == activeClusterID);
+            clusterVis.gameObject.SetActive(showBubble);
+        }
+    }
+
+    public void SetHoverHighlight(Respondent target) 
+    {
+        // Use the CACHED _currentFaceMode here
+        if (_currentFaceMode == FaceMode.Cluster)
+        {
+            if (target != null)
+            {
+                int cID = GetClusterID(target.id);
+                SetClusterHighlight(cID);
+            }
+            else
+            {
+                SetClusterHighlight(-1);
+            }
+        }
+        else
+        {
+            // Standard ghost logic
+            bool anyone = (target != null);
+            if (_activeVisualsArray != null) 
+            {
+                foreach (var v in _activeVisualsArray) 
+                {
+                    v.SetFocusState(target != null && v.data.id == target.id, anyone);
+                }
+            }
+        }
+    }
+
+    // Helpers
     private float CalculateAxisValue(AxisVariable type, Respondent r, float ls, float baseLS, float[] popLS, float[] popBaseLS)
     {
         switch (type) {
@@ -315,31 +387,20 @@ public class VisualisationManager : MonoBehaviour
         return graphGrid.GetPlotPosition(normX, normY, id);
     }
 
-    // Sprites
     private Sprite GetAbsoluteSprite(float ls) { if (ls >= 6.0f) return faceGreen; if (ls <= 4.0f) return faceRed; return faceYellow; }
     private Sprite GetAbsoluteSocietySprite(float uSoc) { if (uSoc >= 0.6f) return faceGreen; if (uSoc <= 0.4f) return faceRed; return faceYellow; }
     private Sprite GetRelativeSprite(float current, float baseline) { float diff = current - baseline; if (diff > 0.001f) return faceGreen; if (diff < -0.001f) return faceRed; return faceYellow; }
 
-    // --- DEBUG GIZMOS ---
     void OnDrawGizmos()
     {
         if (!showClusterGizmos || CurrentClusters == null || graphGrid == null) return;
-
         foreach (var g in CurrentClusters)
         {
             if (g.size == 0) continue;
-            // Convert normalized center back to world position for drawing
             Vector3 worldPos = graphGrid.GetPlotPosition(g.visualCenter.x, g.visualCenter.y, 0);
-            
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(worldPos, 0.5f);
         }
-    }
-    
-    // Pass-throughs
-    public void SetHoverHighlight(Respondent target) {
-        bool anyone = (target != null);
-        if (_activeVisualsArray != null) foreach (var v in _activeVisualsArray) v.SetFocusState(target != null && v.data.id == target.id, anyone);
     }
     public void SetGhostMode(bool enable) { _showGhostOverlay = enable; }
     public void SetArrowMode(bool showAll) { if (_activeVisualsArray != null) foreach (var v in _activeVisualsArray) v.SetArrowState(showAll); }

@@ -4,14 +4,25 @@ public static class KMeans
 {
     public struct Result
     {
-        public Vector2[] Centres; // The center of each group
-        public int[] Assignments;   // '2' means this person is in Group 2
+        public Vector2[] Centres;
+        public int[] Assignments;
     }
 
     public static Result GetClusters(Vector2[] points, int k, int maxIterations = 10)
     {
+        // Save the old state so we don't mess up the rest of the game's RNG
+        Random.State oldState = Random.state;
+        
+        // Force a specific seed. This ensures the random starting points
+        // are identical every time you run this, eliminating the "wobble".
+        Random.InitState(42); 
+
         int count = points.Length;
-        if (count == 0) return new Result();
+        if (count == 0) 
+        {
+            Random.state = oldState;
+            return new Result();
+        }
 
         // Allocations
         Vector2[] centres = new Vector2[k];
@@ -19,7 +30,7 @@ public static class KMeans
         int[] pixelCounts = new int[k];
         Vector2[] runningSums = new Vector2[k];
 
-        // 1. Initialise with random points
+        // 1. Initialise with random points (Now Deterministic)
         for (int i = 0; i < k; i++)
             centres[i] = points[Random.Range(0, count)];
 
@@ -59,6 +70,9 @@ public static class KMeans
             }
             iter++;
         }
+
+        // Restore randomness for the rest of the game
+        Random.state = oldState;
 
         return new Result { Centres = centres, Assignments = assignments };
     }

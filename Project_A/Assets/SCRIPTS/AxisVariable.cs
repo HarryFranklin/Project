@@ -19,5 +19,6 @@ public enum FaceMode
 {
     Split, // Left = Self, Right = Society
     PersonalWellbeing, // Entire face = self
-    SocietalFairness // Entire face = society
+    SocietalFairness, // Entire face = society
+    Cluster
 }

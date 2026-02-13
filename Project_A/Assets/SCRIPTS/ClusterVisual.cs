@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
-public class ClusterVisual : MonoBehaviour
+public class ClusterVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     public int clusterID;
     public SimulationManager simManager;
@@ -11,40 +12,39 @@ public class ClusterVisual : MonoBehaviour
     {
         _data = data;
         simManager = manager;
-        
         this.clusterID = data.id; 
         
-        // --- Scaling ---
-        // UI uses pixels, so "1.0" scale is tiny. We might need to keep scale at 1,
-        // and change sizeDelta (Width/Height) instead. 
-        // OR: If your Respondents use Scale, we can use Scale too.
-        // Let's stick to Scale for now, but be gentle.
-        float size = 0.8f + (data.size / 100f); 
+        // Scale based on population
+        float size = 1.0f + (data.size / 80f); 
         transform.localScale = Vector3.one * size;
         
-        // --- FIX 3: Transparency on UI Image ---
+        // Transparency
         var img = GetComponent<Image>();
         if (img) {
             Color c = img.color;
-            c.a = 0.4f; // 40% Transparent
+            c.a = 0.4f; 
             img.color = c;
         }
     }
 
-    void OnMouseEnter()
+    public void OnPointerEnter(PointerEventData eventData)
     {
-        if (_data == null || simManager == null) return;
+        if (simManager)
+        {
+            string info = $"<size=120%>{_data.name}</size>\n";
+            info += $"Population: {_data.size}";
+            simManager.uiManager.UpdateHoverInfo(info);
 
-        string info = $"<size=120%>{_data.name}</size>\n";
-        info += $"<b>Population:</b> {_data.size}\n";
-        info += $"<b>Avg LS:</b> {_data.avgLS:F2}\n";
-        info += $"<b>Avg Fairness:</b> {_data.avgSocietalFairness:F2}";
-
-        simManager.uiManager.UpdateHoverInfo(info);
+            simManager.visuals.SetClusterHighlight(clusterID);
+        }
     }
 
-    void OnMouseExit()
+    public void OnPointerExit(PointerEventData eventData)
     {
-        if (simManager) simManager.uiManager.UpdateHoverInfo("");
+        if (simManager)
+        {
+            simManager.uiManager.UpdateHoverInfo("");
+            simManager.visuals.SetClusterHighlight(-1);
+        }
     }
 }
