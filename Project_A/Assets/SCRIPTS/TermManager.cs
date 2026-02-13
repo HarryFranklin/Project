@@ -25,6 +25,7 @@ public class TermManager : MonoBehaviour
 
     [Header("References")]
     public SimulationManager simManager;
+    public VisualisationManager visualisationManager;
     
     [Header("UI Connections")]
     public TMP_Text turnText;        
@@ -197,17 +198,16 @@ public class TermManager : MonoBehaviour
 
     void OnCancelClicked()
     {
-        // 1. Unlock State
         currentState = TurnState.Drafting;
         _selectedPolicy = null;
+        simManager.SetPreviewLock(false);
+        simManager.StopPreview();
+        
+        // Add this to reset zoom visually when going back to drafting
+        visualisationManager.ResetZoom(); 
 
-        // 2. Reset Visuals
-        simManager.SetPreviewLock(false); // Unlock
-        simManager.StopPreview();         // Revert to reality
-
-        // 3. Restore UI
         if (confirmPanel) confirmPanel.SetActive(false);
-        AssignPoliciesToUI(); // Re-show all buttons
+        AssignPoliciesToUI();
     }
 
     // --- LOGGING & END GAME ---

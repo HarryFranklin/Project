@@ -32,6 +32,7 @@ public class SimulationManager : MonoBehaviour
     public float[] BaselineLS { get; private set; }
     public float[] CurrentLS { get; private set; }
     public Policy ActivePolicy { get; private set; }
+    public Policy _currentPreviewPolicy;
 
     // Cache
     private AxisVariable _cachedX;
@@ -103,6 +104,9 @@ public class SimulationManager : MonoBehaviour
             _cachedY = gameplayYAxis;
         }
 
+        // Reset zoom
+        visuals.ResetZoom();
+
         // Prevents lingering ghosts
         if (visuals) visuals.SetHoverHighlight(null);
         
@@ -130,6 +134,8 @@ public class SimulationManager : MonoBehaviour
     // --- PREVIEW LOGIC ---
     public void PreviewPolicy(Policy p)
     {
+        _currentPreviewPolicy = p;
+
         _cachedX = xAxis;
         _cachedY = yAxis;
 
@@ -154,6 +160,8 @@ public class SimulationManager : MonoBehaviour
         // If locked, ignore the request to stop
         if (_previewLocked) return;
 
+        _currentPreviewPolicy = null;
+
         // 1. Restore Axes
         xAxis = _cachedX;
         yAxis = _cachedY;
@@ -162,8 +170,21 @@ public class SimulationManager : MonoBehaviour
         UpdateSimulation();
     }
 
+    public void RefreshGraphOnly()
+    {
+        // If we are currently looking at a preview (locked or hovered), redraw that
+        if (_currentPreviewPolicy != null)
+        {
+            PreviewPolicy(_currentPreviewPolicy);
+        }
+        else
+        {
+            UpdateSimulation();
+        }
+    }
+
     // --- INTERNAL UPDATES ---
-    void UpdateSimulation()
+    public void UpdateSimulation()
     {
         // Safety check
         if (PopulationList == null || PopulationList.Count == 0) return;
@@ -201,8 +222,18 @@ public class SimulationManager : MonoBehaviour
     }
 
     // --- CONTROLS ---
-    public void SetAxisVariables(AxisVariable x, AxisVariable y) { xAxis = x; yAxis = y; UpdateSimulation(); }
-    public void SetFaceMode(FaceMode mode) { faceMode = mode; UpdateSimulation(); }
+    public void SetAxisVariables(AxisVariable x, AxisVariable y) 
+    { 
+        xAxis = x; 
+        yAxis = y; 
+        RefreshGraphOnly();
+    }
+
+    public void SetFaceMode(FaceMode mode) 
+    { 
+        faceMode = mode; 
+        RefreshGraphOnly();
+    }
     public void SetGhostMode(bool enabled) { if (visuals) { visuals.SetGhostMode(enabled); UpdateSimulation(); } }
     public void SetArrowMode(bool enabled) { if (visuals) visuals.SetArrowMode(enabled); }
 

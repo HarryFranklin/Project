@@ -13,17 +13,23 @@ public class ClusterVisual : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         _data = data;
         simManager = manager;
         this.clusterID = data.id; 
-        
-        // Scale based on population
-        float size = 1.0f + (data.size / 80f); 
-        transform.localScale = Vector3.one * size;
-        
-        // Transparency
+
+        // Logarithmic scaling for better visibility
+        float logSize = 0.6f + Mathf.Log10(data.size + 1) * 0.25f; 
+        transform.localScale = Vector3.one * logSize;
+
         var img = GetComponent<Image>();
-        if (img) {
-            Color c = img.color;
-            c.a = 0.4f; 
-            img.color = c;
+        if (img && simManager.visuals.clusterColors != null && simManager.visuals.clusterColors.Length > 0)
+        {
+            // Get the representative colour for this group
+            Color clusterColor = simManager.visuals.clusterColors[clusterID % simManager.visuals.clusterColors.Length];
+
+            // Invert the colour for high contrast (1 - component)
+            // We keep the alpha low (0.3f) so it remains a background "halo"
+            //Color invertedColor = new Color(1f - clusterColor.r, 1f - clusterColor.g, 1f - clusterColor.b, 0.3f);
+            Color invertedColor = new Color(0f, 0f, 0f, 0.7f); // black 
+            
+            img.color = invertedColor;
         }
     }
 

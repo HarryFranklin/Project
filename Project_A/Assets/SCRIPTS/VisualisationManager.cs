@@ -19,6 +19,10 @@ public class VisualisationManager : MonoBehaviour
     public int clusterCount = 4;
     public bool showClusterGizmos = true;
 
+    [Header("Cluster Appearance")]
+    public Sprite clusterDotSprite;
+    public Color[] clusterColors = new Color[] { Color.cyan, Color.magenta, Color.green, Color.yellow };
+    
     [Header("Cluster Visuals")]
     public GameObject clusterPrefab;
     private List<ClusterVisual> _spawnedClusters = new List<ClusterVisual>();
@@ -82,62 +86,64 @@ public class VisualisationManager : MonoBehaviour
     // --- 3. Display Logic ---
     public void UpdateDisplay(Respondent[] population, float[] currentLS, float[] baselineLS, Policy activePolicy, AxisVariable xAxis, AxisVariable yAxis, FaceMode faceMode)
     {
-        // 1. SAVE THE MODE (So we can use it in hover logic later)
-        _currentFaceMode = faceMode;
-
+        _currentFaceMode = faceMode; // Save for hover logic
         int count = population.Length;
-        if (_cacheXValues == null || _cacheXValues.Length != count)
-        {
+        
+        // Ensure Cache
+        if (_cacheXValues == null || _cacheXValues.Length != count) {
             _cacheXValues = new float[count];
             _cacheYValues = new float[count];
         }
 
-        bool isStackMode = (yAxis == AxisVariable.Stack);
-        Dictionary<int, int> binCount = isStackMode ? new Dictionary<int, int>() : null;
+        // --- PASS 1: CALCULATE POSITIONS (Do not draw yet) ---
         float xMin = float.MaxValue, xMax = float.MinValue;
         float yMin = float.MaxValue, yMax = float.MinValue;
+        bool isStackMode = (yAxis == AxisVariable.Stack);
+        Dictionary<int, int> binCount = isStackMode ? new Dictionary<int, int>() : null;
 
-        // --- PASS 1: CALC VALUES ---
         for (int i = 0; i < count; i++)
         {
             Respondent r = population[i];
             float cLS = currentLS[i];
             float bLS = baselineLS[i];
 
+            // Calc X
             float valX = CalculateAxisValue(xAxis, r, cLS, bLS, currentLS, baselineLS);
             float valY = 0;
 
-            if (isStackMode)
-            {
+            // Calc Y
+            if (isStackMode) {
                 float snappedX = Mathf.Round(valX / STACK_BIN_SIZE) * STACK_BIN_SIZE;
                 int binKey = Mathf.RoundToInt(snappedX * 100);
                 if (!binCount.ContainsKey(binKey)) binCount[binKey] = 0;
                 valY = binCount[binKey];
                 binCount[binKey]++;
                 valX = snappedX;
-            }
-            else
-            {
+            } else {
                 valY = CalculateAxisValue(yAxis, r, cLS, bLS, currentLS, baselineLS);            
             }
 
             _cacheXValues[i] = valX;
             _cacheYValues[i] = valY;
 
-            if (cLS > -0.9f) 
-            {
-                if (valX < xMin) xMin = valX;
-                if (valX > xMax) xMax = valX;
-                if (valY < yMin) yMin = valY;
-                if (valY > yMax) yMax = valY;
+            // Ranges
+            if (cLS > -0.9f) {
+                if (valX < xMin) xMin = valX; if (valX > xMax) xMax = valX;
+                if (valY < yMin) yMin = valY; if (valY > yMax) yMax = valY;
             }
         }
 
         GetFinalRange(xAxis, ref xMin, ref xMax);
         GetFinalRange(yAxis, ref yMin, ref yMax);
+        
+        // Update the axis visuals with the zoomed ranges
         graphAxes.UpdateAxisVisuals(xAxis, xMin, xMax, yAxis, yMin, yMax);
 
-        // --- PASS 2: DRAW & UPDATE VISUALS ---
+        // --- PASS 2: CALCULATE CLUSTERS ---
+        // We do this now so we know the colors before we draw the faces
+        RecalculateClusters(population, currentLS, xMin, xMax, yMin, yMax);
+
+        // --- PASS 3: DRAW VISUALS ---
         bool isComparisonMode = (activePolicy != null);
         bool enableGhosts = _showGhostOverlay && isComparisonMode && !isStackMode;
 
@@ -145,7 +151,8 @@ public class VisualisationManager : MonoBehaviour
         {
             Respondent r = population[i];
             float cLS = currentLS[i];
-
+            
+            // 1. Calculate Standard Sprites (We do this every frame)
             float cUSelf = WelfareMetrics.GetUtilityForPerson(cLS, r.personalUtilities);
             float cUSoc = WelfareMetrics.EvaluateDistribution(currentLS, r.societalUtilities);
             float bLS = baselineLS[i];
@@ -153,18 +160,17 @@ public class VisualisationManager : MonoBehaviour
             float bUSoc = WelfareMetrics.EvaluateDistribution(baselineLS, r.societalUtilities);
 
             Sprite left = faceYellow, right = faceYellow;
+
             if (cLS <= -0.9f) { left = right = faceDead; }
-            else
-            {
-                if (isComparisonMode) {
-                    left = GetRelativeSprite(cUSelf, bUSelf);
-                    right = GetRelativeSprite(cUSoc, bUSoc);
-                } else {
-                    left = GetAbsoluteSprite(cLS);
-                    right = GetAbsoluteSocietySprite(cUSoc); 
-                }
+            else if (isComparisonMode) {
+                left = GetRelativeSprite(cUSelf, bUSelf);
+                right = GetRelativeSprite(cUSoc, bUSoc);
+            } else {
+                left = GetAbsoluteSprite(cLS);
+                right = GetAbsoluteSocietySprite(cUSoc); 
             }
 
+            // 2. Positions
             Vector2 currPos = GetPos(r.id, _cacheXValues[i], _cacheYValues[i], xMin, xMax, yMin, yMax);
             Vector2 basePos = currPos; 
 
@@ -174,11 +180,27 @@ public class VisualisationManager : MonoBehaviour
                 basePos = GetPos(r.id, baseX, baseY, xMin, xMax, yMin, yMax);
             }
 
+            // 3. Apply Standard Visuals
             _activeVisualsArray[i].UpdateVisuals(currPos, basePos, left, right, GetAbsoluteSprite(bLS), GetAbsoluteSocietySprite(bUSoc), enableGhosts);
-        }
 
-        // --- PASS 3: CLUSTERING ---
-        RecalculateClusters(population, currentLS, xMin, xMax, yMin, yMax);
+            // 4. OVERRIDE WITH CLUSTER LOOK (If Enabled)
+            if (faceMode == FaceMode.Cluster && _currentAssignments != null)
+            {
+                if (i < _currentAssignments.Length)
+                {
+                    int cID = _currentAssignments[i];
+                    Color c = clusterColors[cID % clusterColors.Length];
+                    
+                    // Apply the look
+                    _activeVisualsArray[i].SetClusterAppearance(clusterDotSprite, c);
+                }
+            }
+            else
+            {
+                // Reset Colour to White
+                _activeVisualsArray[i].ResetAppearance();
+            }
+        }
     }
 
     // --- CLUSTERING LOGIC ---
@@ -194,20 +216,21 @@ public class VisualisationManager : MonoBehaviour
             normPoints[i] = new Vector2(nX, nY);
         }
 
+        // 1. Maths
         KMeans.Result result = KMeans.GetClusters(normPoints, clusterCount);
+        _currentAssignments = result.Assignments; // Save for colouring
 
-        // --- SAVE ASSIGNMENTS FOR HOVER LOGIC ---
-        _currentAssignments = result.Assignments;
-
+        // 2. Clear & Init
         CurrentClusters.Clear();
         for (int k = 0; k < clusterCount; k++) {
             CurrentClusters.Add(new GroupOpinion { 
                 id = k, 
-                visualCenter = result.Centres[k],
+                visualCenter = result.Centres[k], 
                 avgSocietalUtilities = new float[6] 
             });
         }
 
+        // 3. Sum Data
         for (int i = 0; i < count; i++)
         {
             int cId = result.Assignments[i];
@@ -220,14 +243,41 @@ public class VisualisationManager : MonoBehaviour
             for(int j=0; j<6; j++) g.avgSocietalUtilities[j] += r.societalUtilities[j];
         }
 
+        // If two clusters are nearly identical positions, hide the smaller one.
+        float mergeThreshold = 0.05f; // 5% of screen width
+
+        // We iterate backwards so we can safely "disable" clusters
+        for (int i = 0; i < CurrentClusters.Count; i++)
+        {
+            if (CurrentClusters[i].size == 0) continue;
+
+            for (int j = i + 1; j < CurrentClusters.Count; j++)
+            {
+                if (CurrentClusters[j].size == 0) continue;
+
+                float dist = Vector2.Distance(CurrentClusters[i].visualCenter, CurrentClusters[j].visualCenter);
+                
+                if (dist < mergeThreshold)
+                {
+                    // Merge J into I
+                    CurrentClusters[i].size += CurrentClusters[j].size;
+                    // (You could average the stats here too if you want perfect accuracy)
+                    
+                    // Kill J
+                    CurrentClusters[j].size = 0; 
+                }
+            }
+        }
+
+        // 4. Finalise Averages (Standard)
         foreach (var g in CurrentClusters)
         {
             if (g.size > 0)
             {
-                g.avgLS /= g.size;
-                g.avgSocietalFairness /= g.size;
-                for(int j=0; j<6; j++) g.avgSocietalUtilities[j] /= g.size;
-
+                g.avgLS /= g.size; // Note: If you merged sizes above, this average might be slightly off for the merged group, 
+                                   // but usually acceptable for visuals.
+                
+                // Naming
                 if (g.avgLS >= 7.5f) g.name = "The Thriving";
                 else if (g.avgLS <= 4.5f) g.name = "The Struggling";
                 else if (g.avgSocietalFairness < 0.3f) g.name = "The Cynics";
@@ -242,6 +292,13 @@ public class VisualisationManager : MonoBehaviour
     {
         if (!clusterPrefab) return;
 
+        if (_currentFaceMode != FaceMode.Cluster)
+        {
+            foreach (var c in _spawnedClusters) if(c) c.gameObject.SetActive(false);
+            return;
+        }
+
+        // 1. Spawn logic
         while (_spawnedClusters.Count < CurrentClusters.Count)
         {
             GameObject obj = Instantiate(clusterPrefab, personContainer);
@@ -250,6 +307,7 @@ public class VisualisationManager : MonoBehaviour
             _spawnedClusters.Add(component);
         }
 
+        // 2. Position logic
         for (int i = 0; i < _spawnedClusters.Count; i++)
         {
             ClusterVisual vis = _spawnedClusters[i];
@@ -373,14 +431,25 @@ public class VisualisationManager : MonoBehaviour
 
     private void GetFinalRange(AxisVariable type, ref float min, ref float max)
     {
-        if (type == AxisVariable.LifeSatisfaction || type == AxisVariable.Wealth) { min = 0; max = 10; return; }
-        if (type == AxisVariable.PersonalUtility || type == AxisVariable.SocietalFairness) { min = 0; max = 1; return; }
-        if (type == AxisVariable.DeltaPersonalUtility || type == AxisVariable.DeltaSocietalFairness) { min = -1f; max = 1f; return; }
-        if (type == AxisVariable.Stack) { min = 0; max = Mathf.Max(max, 5f); return; }
-        
-        if (min == float.MaxValue || max == float.MinValue || (min == 0 && max == 0)) { min = -0.1f; max = 0.1f; return; }
-        float absMax = Mathf.Max(Mathf.Abs(min), Mathf.Abs(max)) * 1.05f;
-        min = -absMax; max = absMax;
+        float baseMin = 0, baseMax = 0;
+
+        if (type == AxisVariable.LifeSatisfaction || type == AxisVariable.Wealth) 
+        { baseMin = 0; baseMax = 10; }
+        else if (type == AxisVariable.PersonalUtility || type == AxisVariable.SocietalFairness) 
+        { baseMin = 0; baseMax = 1; }
+        // Enforce +/- 1 as the base for zoom calculations
+        else if (type == AxisVariable.DeltaPersonalUtility || type == AxisVariable.DeltaSocietalFairness) 
+        { baseMin = -1f; baseMax = 1f; }
+        else if (type == AxisVariable.Stack) 
+        { baseMin = 0; baseMax = Mathf.Max(max, 5f); }
+
+        // Apply zoom around the center of the base range
+        float range = baseMax - baseMin;
+        float center = baseMin + (range / 2f);
+        float zoomedRange = range * _zoomScale;
+
+        min = center - (zoomedRange / 2f);
+        max = center + (zoomedRange / 2f);
     }
 
     private Vector2 GetPos(int id, float valX, float valY, float xMin, float xMax, float yMin, float yMax)
@@ -388,6 +457,37 @@ public class VisualisationManager : MonoBehaviour
         float normX = Mathf.Clamp01(Mathf.InverseLerp(xMin, xMax, valX));
         float normY = Mathf.Clamp01(Mathf.InverseLerp(yMin, yMax, valY));
         return graphGrid.GetPlotPosition(normX, normY, id);
+    }
+
+    // --- ZOOM SETTINGS ---
+    private float _zoomScale = 1.0f; // 1.0 = 100%
+
+    public void ZoomIn()
+    {
+        _zoomScale *= 0.75f;
+        if (_zoomScale < 0.05f) _zoomScale = 0.05f;
+        
+        FindFirstObjectByType<SimulationManager>().RefreshGraphOnly();
+    }
+
+    public void ZoomOut()
+    {
+        _zoomScale *= 1.25f;
+        if (_zoomScale > 10.0f) _zoomScale = 10.0f;
+        
+        FindFirstObjectByType<SimulationManager>().RefreshGraphOnly();
+    }
+
+    public void ResetZoom()
+    {
+        _zoomScale = 1.0f; // Return to 100% view
+        
+        // Trigger a redraw through the SimulationManager
+        var sim = FindAnyObjectByType<SimulationManager>();
+        if (sim != null)
+        {
+            sim.UpdateSimulation();
+        }
     }
 
     private Sprite GetAbsoluteSprite(float ls) { if (ls >= 6.0f) return faceGreen; if (ls <= 4.0f) return faceRed; return faceYellow; }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic; // Needed for Lists
 
 public static class KMeans
 {
@@ -10,19 +11,12 @@ public static class KMeans
 
     public static Result GetClusters(Vector2[] points, int k, int maxIterations = 10)
     {
-        // Save the old state so we don't mess up the rest of the game's RNG
+        // 1. Determinism
         Random.State oldState = Random.state;
-        
-        // Force a specific seed. This ensures the random starting points
-        // are identical every time you run this, eliminating the "wobble".
         Random.InitState(42); 
 
         int count = points.Length;
-        if (count == 0) 
-        {
-            Random.state = oldState;
-            return new Result();
-        }
+        if (count == 0) { Random.state = oldState; return new Result(); }
 
         // Allocations
         Vector2[] centres = new Vector2[k];
@@ -30,14 +24,48 @@ public static class KMeans
         int[] pixelCounts = new int[k];
         Vector2[] runningSums = new Vector2[k];
 
-        // 1. Initialise with random points (Now Deterministic)
-        for (int i = 0; i < k; i++)
-            centres[i] = points[Random.Range(0, count)];
+        // Prevents clusters from spawning inside each other
+        List<Vector2> centerList = new List<Vector2>();
+        
+        // 1. Pick first center randomly
+        centerList.Add(points[Random.Range(0, count)]);
+
+        // 2. Pick remaining centers based on distance
+        for (int i = 1; i < k; i++)
+        {
+            float maxDistSq = -1f;
+            Vector2 bestCandidate = Vector2.zero;
+
+            // Check every point to find the one furthest from EXISTING centers
+            for (int p = 0; p < count; p++)
+            {
+                Vector2 point = points[p];
+                float distToNearest = float.MaxValue;
+
+                // Find distance to closest existing center
+                foreach (Vector2 c in centerList)
+                {
+                    float d = (point - c).sqrMagnitude;
+                    if (d < distToNearest) distToNearest = d;
+                }
+
+                // Keep the point that is furthest away from everyone else
+                if (distToNearest > maxDistSq)
+                {
+                    maxDistSq = distToNearest;
+                    bestCandidate = point;
+                }
+            }
+            centerList.Add(bestCandidate);
+        }
+        
+        // Copy list to array
+        for(int i=0; i<k; i++) centres[i] = centerList[i];
 
         bool changed = true;
         int iter = 0;
 
-        // 2. The Loop
+        // 3. The Loop (Standard Logic)
         while (changed && iter < maxIterations)
         {
             changed = false;
@@ -71,9 +99,7 @@ public static class KMeans
             iter++;
         }
 
-        // Restore randomness for the rest of the game
         Random.state = oldState;
-
         return new Result { Centres = centres, Assignments = assignments };
     }
 }

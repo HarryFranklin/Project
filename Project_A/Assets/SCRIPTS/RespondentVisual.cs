@@ -190,6 +190,25 @@ public class RespondentVisual : MonoBehaviour, IPointerEnterHandler, IPointerExi
         arrowLine.localRotation = Quaternion.Euler(0, 0, angle);
     }
 
+    // --- Clustering ---
+    public void SetClusterAppearance(Sprite dotSprite, Color clusterColor)
+    {
+        // Swap to the plain dot sprite
+        if (faceLeft) faceLeft.sprite = dotSprite;
+        if (faceRight) faceRight.sprite = dotSprite;
+
+        // Tint it
+        if (faceLeft) faceLeft.color = clusterColor;
+        if (faceRight) faceRight.color = clusterColor;
+    }
+
+    public void ResetAppearance()
+    {
+        // Reset color to white so the normal face sprites show correctly
+        if (faceLeft) faceLeft.color = Color.white;
+        if (faceRight) faceRight.color = Color.white;
+    }
+
     // --- Events ---
     public void OnPointerEnter(PointerEventData e) => _manager.OnHoverEnter(data);
     public void OnPointerExit(PointerEventData e) => _manager.OnHoverExit();
