@@ -9373,11 +9373,14 @@ MonoBehaviour:
   personPrefab: {fileID: 3890215646749294278, guid: 615341e7aa76e4d4d85cfc80848508e5, type: 3}
   graphGrid: {fileID: 1254861568}
   graphAxes: {fileID: 1254861567}
-  deltaScaleRange: 1
   faceGreen: {fileID: 674305466, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceYellow: {fileID: -2030909350, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceRed: {fileID: 2095936593, guid: 94bb2400303831441b1514f1dc6998ea, type: 3}
   faceDead: {fileID: 21300000, guid: 1b307972a226d694697c2d79b77a29d7, type: 3}
+  clusterCount: 4
+  showClusterGizmos: 1
+  clusterPrefab: {fileID: 658848885105127079, guid: cd2bb50213ff8d54bab2ba3490cfa352, type: 3}
+  CurrentClusters: []
 --- !u!4 &1861122961
 Transform:
   m_ObjectHideFlags: 0
