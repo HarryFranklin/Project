@@ -105,6 +105,19 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void SyncDropdownsToAxes()
+    {
+        if (xAxisDropdown != null)
+        {
+            xAxisDropdown.SetValueWithoutNotify((int)simulationManager.xAxis);
+        }
+
+        if (yAxisDropdown != null)
+        {
+            yAxisDropdown.SetValueWithoutNotify((int)simulationManager.yAxis);
+        }
+    }
+
     // --- DATA UPDATES ---
 
     public void UpdatePolicyInfo(Policy p)

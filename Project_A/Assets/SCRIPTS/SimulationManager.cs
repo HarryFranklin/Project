@@ -102,6 +102,9 @@ public class SimulationManager : MonoBehaviour
 
             _cachedX = gameplayXAxis;
             _cachedY = gameplayYAxis;
+            
+            // Ensure dropdowns reflect the move to Gameplay axes
+            if (uiManager != null) uiManager.SyncDropdownsToAxes();
         }
 
         // Reset zoom
@@ -139,8 +142,11 @@ public class SimulationManager : MonoBehaviour
         _cachedX = xAxis;
         _cachedY = yAxis;
 
-        xAxis = previewXAxis;
-        yAxis = previewYAxis;
+        xAxis = previewXAxis; // DeltaPersonalUtility
+        yAxis = previewYAxis; // DeltaSocietalFairness
+
+        // Sync the UI dropdowns to reflect the Delta view
+        if (uiManager != null) uiManager.SyncDropdownsToAxes();
 
         float[] tempLS = p.ApplyPolicy(PopulationList.ToArray());
 
@@ -157,16 +163,16 @@ public class SimulationManager : MonoBehaviour
 
     public void StopPreview()
     {
-        // If locked, ignore the request to stop
         if (_previewLocked) return;
 
         _currentPreviewPolicy = null;
 
-        // 1. Restore Axes
         xAxis = _cachedX;
         yAxis = _cachedY;
 
-        // 2. Revert visuals
+        // Sync the UI dropdowns back to the original view (e.g., LS and Stack)
+        if (uiManager != null) uiManager.SyncDropdownsToAxes();
+
         UpdateSimulation();
     }
 

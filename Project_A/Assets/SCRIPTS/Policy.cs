@@ -59,7 +59,8 @@ public class Policy : ScriptableObject
 
         for (int i = 0; i < population.Length; i++)
         {
-            float current = population[i].currentLS;
+            Respondent r = population[i];
+            float current = r.currentLS;
             float totalDelta = 0f;
 
             // 1. Apply Base Impact (Rich/Middle/Poor)
@@ -70,10 +71,8 @@ public class Policy : ScriptableObject
             // 2. Process Targeted Rules
             foreach (var rule in specificRules)
             {
-                // A. Is this person in the target range?
                 if (current >= rule.minLS && current <= rule.maxLS)
                 {
-                    // B. Do they get selected?
                     bool isSelected = false;
                     
                     if (rule.affectEveryone)
@@ -82,11 +81,13 @@ public class Policy : ScriptableObject
                     }
                     else
                     {
-                        // Roll the dice (0.0 to 1.0)
-                        if (Random.value <= rule.proportion) isSelected = true;
+                        // Instead of Random.value, we create a pseudo-random 0-1 value 
+                        // based on the person's ID and the policy's name.
+                        // This ensures the same people are chosen every time you click/preview.
+                        float seed = (float)((r.id * 1.58f + policyName.GetHashCode() * 0.72f) % 1.0f);
+                        if (Mathf.Abs(seed) <= rule.proportion) isSelected = true;
                     }
 
-                    // C. Apply Impact
                     if (isSelected)
                     {
                         totalDelta += rule.impact;
@@ -94,7 +95,6 @@ public class Policy : ScriptableObject
                 }
             }
 
-            // 3. Final Calculation & Clamp
             newLS[i] = Mathf.Clamp(current + totalDelta, 0f, 10f);
         }
 
