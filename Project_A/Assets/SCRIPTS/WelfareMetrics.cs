@@ -48,7 +48,7 @@ public class WelfareMetrics
             cumulative += distribution[i];
             if (r <= cumulative) return i;
         }
-        return 8; // Fallback to most common if maths fails
+        return 10; // Fallback to 10
     }
 
     // --- UTILITY FUNCTIONS ---
