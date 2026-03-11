@@ -1,2 +1,1 @@
-# Project
-
+Repository for the early Unity Engine version of my Policy Sim game.
